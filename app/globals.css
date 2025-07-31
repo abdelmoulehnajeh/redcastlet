@@ -1,0 +1,369 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .dashboard-card {
+    @apply bg-card/95 backdrop-blur-sm border-border shadow-soft hover:shadow-elegant transition-all duration-300;
+  }
+
+  .time-card {
+    @apply bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm border-0 shadow-elegant;
+  }
+
+  .btn-restaurant {
+    @apply bg-gradient-castle hover:shadow-elegant transition-all duration-300 text-white border-0;
+  }
+
+  .btn-secondary-restaurant {
+    @apply bg-gradient-restaurant hover:shadow-soft transition-all duration-300 text-white border-0;
+  }
+
+  .hover-scale {
+    @apply hover:scale-[1.02] transition-transform duration-200;
+  }
+
+  .animate-fade-in {
+    @apply animate-in fade-in duration-500;
+  }
+
+  .animate-pulse-glow {
+    @apply animate-pulse;
+  }
+}
+/* Global Dark Theme for Red Castle Platform */
+
+/* Root variables for consistent theming */
+:root {
+  --primary-gradient: linear-gradient(135deg, rgb(15 23 42) 0%, rgb(88 28 135) 50%, rgb(15 23 42) 100%);
+  --card-background: rgba(30, 41, 59, 0.4);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: rgb(255, 255, 255);
+  --text-secondary: rgb(203, 213, 225);
+  --text-muted: rgb(148, 163, 184);
+}
+
+/* Global background */
+html, body {
+  background: var(--primary-gradient);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Force dark theme for the entire application */
+* {
+  color-scheme: dark;
+}
+
+/* Override shadcn/ui component defaults */
+
+/* Sidebar overrides */
+[data-sidebar] {
+  background: transparent !important;
+  border: none !important;
+}
+
+[data-sidebar="sidebar"] {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  color: var(--text-primary) !important;
+}
+
+/* Card overrides */
+.card, [data-card] {
+  background: var(--card-background) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: 1.5rem !important;
+}
+
+/* Button overrides */
+.btn, button, [role="button"] {
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-ghost, button[variant="ghost"] {
+  background: rgba(30, 41, 59, 0.5) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.btn-ghost:hover, button[variant="ghost"]:hover {
+  background: rgba(51, 65, 85, 0.7) !important;
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
+
+/* Input overrides */
+input, textarea, select {
+  background: rgba(51, 65, 85, 0.5) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  backdrop-filter: blur(8px) !important;
+  border-radius: 0.75rem !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  outline: none !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Dropdown/Select overrides */
+[data-radix-select-content], [role="listbox"], .dropdown-content {
+  background: rgba(30, 41, 59, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 1rem !important;
+  color: var(--text-primary) !important;
+}
+
+[data-radix-select-item], [role="option"], .dropdown-item {
+  color: var(--text-primary) !important;
+  border-radius: 0.5rem !important;
+  margin: 0.125rem !important;
+}
+
+[data-radix-select-item]:hover, [role="option"]:hover, .dropdown-item:hover {
+  background: rgba(51, 65, 85, 0.7) !important;
+}
+
+/* Dialog/Modal overrides */
+[data-radix-dialog-content], .modal, .dialog {
+  background: rgba(30, 41, 59, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 1.5rem !important;
+  color: var(--text-primary) !important;
+}
+
+/* Table overrides */
+table, .table {
+  background: rgba(30, 41, 59, 0.3) !important;
+  backdrop-filter: blur(8px) !important;
+  border-radius: 1rem !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+thead, .table-header {
+  background: rgba(51, 65, 85, 0.5) !important;
+  color: var(--text-secondary) !important;
+}
+
+tbody tr, .table-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+tbody tr:hover, .table-row:hover {
+  background: rgba(51, 65, 85, 0.3) !important;
+}
+
+th, td, .table-cell {
+  color: var(--text-primary) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Badge overrides */
+.badge, [data-badge] {
+  backdrop-filter: blur(8px) !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Toast/Notification overrides */
+.toast, [data-sonner-toast] {
+  background: rgba(30, 41, 59, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 1rem !important;
+  color: var(--text-primary) !important;
+}
+
+/* Loading states */
+.animate-pulse {
+  background: linear-gradient(90deg, rgba(51, 65, 85, 0.5) 25%, rgba(71, 85, 105, 0.5) 50%, rgba(51, 65, 85, 0.5) 75%) !important;
+  background-size: 200% 100% !important;
+  animation: pulse 1.5s ease-in-out infinite !important;
+}
+
+@keyframes pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+}
+
+::-moz-selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Animation utilities */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(1deg); }
+  66% { transform: translateY(5px) rotate(-1deg); }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+  to { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+}
+
+/* Backdrop blur utilities */
+.backdrop-blur-futuristic {
+  backdrop-filter: blur(16px) saturate(180%) brightness(110%);
+}
+
+/* 3D Transform utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-3d {
+  transform-style: preserve-3d;
+}
+
+/* Glass morphism utilities */
+.glass-card {
+  background: rgba(30, 41, 59, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 
+              0 0 0 1px rgba(255, 255, 255, 0.05), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Ensure all text is properly colored */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary) !important;
+}
+
+p, span, div {
+  color: var(--text-secondary) !important;
+}
+
+.muted, .text-muted {
+  color: var(--text-muted) !important;
+}
+
+/* Dark mode for specific libraries */
+.recharts-wrapper, .recharts-surface {
+  background: transparent !important;
+}
+
+.recharts-text {
+  fill: var(--text-secondary) !important;
+}
+
+/* Print styles */
+@media print {
+  * {
+    background: white !important;
+    color: black !important;
+  }
+}

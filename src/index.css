@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Restaurant Employee Dashboard Design System
+All colors MUST be HSL. Professional restaurant-themed palette.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 27 10% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 27 10% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 27 10% 15%;
+
+    /* Red Castle Restaurant theme */
+    --primary: 0 85% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 0 75% 68%;
+
+    /* Professional secondary - elegant gold accent */
+    --secondary: 45 85% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 8% 96%;
+    --muted-foreground: 0 5% 45%;
+
+    --accent: 0 35% 96%;
+    --accent-foreground: 0 20% 15%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 10% 90%;
+    --input: 0 10% 90%;
+    --ring: 0 85% 58%;
+
+    --radius: 0.75rem;
+
+    /* Red Castle theme tokens */
+    --restaurant-red: 0 85% 58%;
+    --restaurant-gold: 45 85% 45%;
+    --restaurant-cream: 0 15% 98%;
+    --castle-gray: 0 5% 45%;
+    
+    /* Elegant gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(45 75% 55%));
+    --gradient-warm: linear-gradient(180deg, hsl(var(--restaurant-cream)), hsl(0 0% 100%));
+    --gradient-castle: linear-gradient(145deg, hsl(var(--primary)), hsl(var(--secondary)) 50%, hsl(var(--primary-glow)));
+    
+    /* Shadows */
+    --shadow-soft: 0 4px 20px hsl(var(--primary) / 0.1);
+    --shadow-elevated: 0 8px 30px hsl(var(--primary) / 0.15);
+    --shadow-glow: 0 0 30px hsl(var(--primary-glow) / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 0 10% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 10% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 10% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 0 80% 62%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 0 70% 72%;
+
+    --secondary: 45 75% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 8% 15%;
+    --muted-foreground: 0 5% 65%;
+
+    --accent: 0 8% 18%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 8% 20%;
+    --input: 0 8% 20%;
+    --ring: 0 80% 62%;
+
+    /* Dark Red Castle theme tokens */
+    --restaurant-red: 0 80% 62%;
+    --restaurant-gold: 45 75% 50%;
+    --restaurant-cream: 0 8% 15%;
+    --castle-gray: 0 5% 65%;
+    
+    /* Dark elegant gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(45 65% 60%));
+    --gradient-warm: linear-gradient(180deg, hsl(var(--restaurant-cream)), hsl(0 8% 10%));
+    --gradient-castle: linear-gradient(145deg, hsl(var(--primary)), hsl(var(--secondary)) 50%, hsl(var(--primary-glow)));
+    
+    /* Dark shadows */
+    --shadow-soft: 0 4px 20px hsl(0 0% 0% / 0.3);
+    --shadow-elevated: 0 8px 30px hsl(0 0% 0% / 0.4);
+    --shadow-glow: 0 0 30px hsl(var(--primary-glow) / 0.2);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* Red Castle Restaurant theme button variants */
+  .btn-restaurant {
+    @apply bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] 
+           text-primary-foreground px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-semibold 
+           shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)]
+           transition-[var(--transition-smooth)] hover:scale-105 border-0 text-sm sm:text-base;
+  }
+  
+  .btn-secondary-restaurant {
+    @apply bg-gradient-to-r from-[hsl(var(--secondary))] to-[hsl(45_75%_55%)] 
+           text-secondary-foreground px-4 py-2 sm:px-6 sm:py-3 rounded-xl 
+           font-semibold shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elegant)]
+           transition-[var(--transition-smooth)] hover:scale-105 border-0 text-sm sm:text-base;
+  }
+
+  /* Time tracking card */
+  .time-card {
+    @apply bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--accent))]
+           border border-border rounded-2xl p-6 shadow-[var(--shadow-soft)]
+           hover:shadow-[var(--shadow-elevated)] transition-[var(--transition-smooth)];
+  }
+
+  /* Dashboard card */
+  .dashboard-card {
+    @apply bg-[hsl(var(--card))] border border-border rounded-xl p-6 
+           shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elevated)]
+           transition-[var(--transition-smooth)] hover:scale-[1.02];
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-restaurant {
+    background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-castle {
+    background: var(--gradient-castle);
+  }
+  
+  .bg-gradient-warm {
+    background: var(--gradient-warm);
+  }
+  
+  /* Mobile responsive utilities */
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+  
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+}
