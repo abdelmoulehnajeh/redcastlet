@@ -226,7 +226,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
               <div className="absolute -top-8 -right-8 w-16 h-16 bg-gradient-to-br from-yellow-400/20 to-red-400/20 rounded-full blur-2xl animate-pulse"></div>
               
               <Link href="/dashboard" onClick={handleNavigation} className="flex items-center cursor-pointer relative z-10">
-                <div className="w-12 h-12 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-2xl border border-white/30 transform group-hover:scale-110 transition-all duration-300 flex-shrink-0 relative overflow-hidden"
+                <div className="w-16 h-16 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-2xl border border-white/30 transform group-hover:scale-110 transition-all duration-300 flex-shrink-0 relative overflow-hidden"
                      style={{
                        boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.2)',
                        transform: 'perspective(1000px) rotateX(15deg) rotateY(-5deg)'
@@ -234,8 +234,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                   {/* 3D depth layer */}
                   <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-black/10 rounded-xl"></div>
                   {/* Icon glow */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-red-400/20 rounded-xl blur-lg opacity-50"></div>
-                  <ChefHat className="w-7 h-7 text-white relative z-10 drop-shadow-lg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
+                 
+                     <img
+                  src="/REDCASTEL.png"
+                  alt="Red Castel Logo"
+                  
+                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
                 </div>
                 {!collapsed && (
                   <div className="ml-3 min-w-0 flex-1">

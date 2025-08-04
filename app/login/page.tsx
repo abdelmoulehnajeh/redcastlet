@@ -15,6 +15,15 @@ import { useMutation } from "@apollo/client"
 import { LOGIN_MUTATION } from "@/lib/graphql-queries"
 import { toast } from "sonner"
 
+// Define types for particles
+interface Particle {
+  id: number
+  left: string
+  top: string
+  animationDelay: string
+  animationDuration: string
+}
+
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -22,11 +31,42 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isHovered, setIsHovered] = useState(false)
 
+  // State for particles to avoid hydration mismatch
+  const [particles, setParticles] = useState<Particle[]>([])
+  const [floatingParticles, setFloatingParticles] = useState<Particle[]>([])
+  const [isMounted, setIsMounted] = useState(false)
+
   const { user, login, isLoading } = useAuth()
   const router = useRouter()
   const [loginMutation, { loading }] = useMutation(LOGIN_MUTATION, {
     errorPolicy: "all",
   })
+
+  // Generate particles only on client side
+  useEffect(() => {
+    setIsMounted(true)
+
+    // Generate loading screen particles
+    const loadingParticles = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 6}s`,
+      animationDuration: `${4 + Math.random() * 4}s`
+    }))
+
+    // Generate main screen floating particles
+    const mainParticles = Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 6}s`,
+      animationDuration: `${6 + Math.random() * 4}s`
+    }))
+
+    setParticles(loadingParticles)
+    setFloatingParticles(mainParticles)
+  }, [])
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -78,30 +118,32 @@ export default function LoginPage() {
         {/* Animated background */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(120,119,198,0.3),transparent)] animate-pulse"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(236,72,153,0.3),transparent)] animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(236,72,153,0.3),transparent)] animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
-        
-        {/* Floating particles */}
-        <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-blue-400 rounded-full opacity-30 animate-float"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 6}s`,
-                animationDuration: `${4 + Math.random() * 4}s`
-              }}
-            />
-          ))}
-        </div>
+
+        {/* Floating particles - only render when mounted */}
+        {isMounted && (
+          <div className="absolute inset-0">
+            {particles.map((particle) => (
+              <div
+                key={particle.id}
+                className="absolute w-2 h-2 bg-blue-400 rounded-full opacity-30 animate-float"
+                style={{
+                  left: particle.left,
+                  top: particle.top,
+                  animationDelay: particle.animationDelay,
+                  animationDuration: particle.animationDuration
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Loading spinner */}
         <div className="relative z-10 flex flex-col items-center space-y-4">
           <div className="relative">
             <div className="w-20 h-20 border-4 border-blue-500/30 rounded-full animate-spin border-t-blue-500"></div>
-            <div className="absolute inset-0 w-20 h-20 border-4 border-purple-500/30 rounded-full animate-spin border-t-purple-500" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+            <div className="absolute inset-0 w-20 h-20 border-4 border-purple-500/30 rounded-full animate-spin border-t-purple-500" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
           </div>
           <div className="text-white/80 text-lg font-medium animate-pulse">Chargement...</div>
         </div>
@@ -114,65 +156,87 @@ export default function LoginPage() {
       {/* Dynamic animated background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(120,119,198,0.3),transparent)] animate-pulse"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(236,72,153,0.3),transparent)] animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.2),transparent)] animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(236,72,153,0.3),transparent)] animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.2),transparent)] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Floating geometric shapes */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-32 h-32 border border-blue-500/20 rounded-full animate-float"></div>
-        <div className="absolute top-40 right-32 w-24 h-24 border border-purple-500/20 rotate-45 animate-float" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-32 left-40 w-20 h-20 border border-pink-500/20 rounded-full animate-float" style={{animationDelay: '4s'}}></div>
-        <div className="absolute bottom-20 right-20 w-28 h-28 border border-cyan-500/20 rotate-12 animate-float" style={{animationDelay: '1s'}}></div>
+        <div className="absolute top-40 right-32 w-24 h-24 border border-purple-500/20 rotate-45 animate-float" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-32 left-40 w-20 h-20 border border-pink-500/20 rounded-full animate-float" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute bottom-20 right-20 w-28 h-28 border border-cyan-500/20 rotate-12 animate-float" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      {/* Floating particles */}
-      <div className="absolute inset-0">
-        {[...Array(30)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-40 animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 6}s`,
-              animationDuration: `${6 + Math.random() * 4}s`
-            }}
-          />
-        ))}
-      </div>
+      {/* Floating particles - only render when mounted */}
+      {isMounted && (
+        <div className="absolute inset-0">
+          {floatingParticles.map((particle) => (
+            <div
+              key={particle.id}
+              className="absolute w-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-40 animate-float"
+              style={{
+                left: particle.left,
+                top: particle.top,
+                animationDelay: particle.animationDelay,
+                animationDuration: particle.animationDuration
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Main login card */}
       <div className="relative z-10 w-full max-w-md">
-        <Card 
+        <Card
           className="glass-card backdrop-blur-futuristic border-0 shadow-2xl transform transition-all duration-500 hover:scale-105 animate-fade-in"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
           {/* Glowing border effect */}
           <div className={`absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-sm transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}></div>
-          
+
           <CardHeader className="text-center space-y-6 relative z-10 pt-8">
-            {/* Logo with enhanced effects */}
+            {/* Enhanced Logo Container */}
             <div className="relative mx-auto">
-              <div className="w-20 h-20 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-3xl flex items-center justify-center shadow-2xl transform transition-all duration-500 hover:rotate-12 hover:scale-110 animate-glow">
-                <ChefHat className="w-10 h-10 text-white drop-shadow-lg" />
+              {/* Main logo container - bright and clean */}
+              <div className="relative w-36 h-36 mx-auto group">
+                {/* Bright glowing background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white via-red-50 to-white rounded-3xl blur-2xl transition-all duration-500 group-hover:blur-3xl group-hover:scale-110"></div>
                 
-                {/* Floating icons around logo */}
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-float">
-                  <Star className="w-3 h-3 text-white" />
+                {/* Solid bright logo background - NO OPACITY */}
+                <div className="relative w-full h-full bg-gradient-to-br from-white via-gray-50 to-white rounded-3xl border border-gray-200 shadow-2xl flex items-center justify-center overflow-hidden group-hover:border-red-300 transition-all duration-500">
+                  
+                  {/* Logo image - large and bright */}
+                  <img
+                    src="/REDCASTELpg.png"
+                    alt="Red Castel Logo"
+                    className="relative z-10 w-28 h-28 object-contain transition-all duration-500 group-hover:scale-110"
+                    style={{
+                      filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.6)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15)) brightness(1.3) contrast(1.2) saturate(1.3)'
+                    }}
+                  />
+                  
+                  {/* Subtle inner glow - solid colors only */}
+                  <div className="absolute inset-4 bg-gradient-to-br from-red-50 via-white to-red-50 rounded-2xl"></div>
                 </div>
-                <div className="absolute -bottom-2 -left-2 w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center animate-float" style={{animationDelay: '1s'}}>
-                  <Zap className="w-3 h-3 text-white" />
+
+                {/* Floating icons around logo - brighter and more visible */}
+                <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center animate-float shadow-xl border-2 border-white">
+                  <Star className="w-4 h-4 text-white drop-shadow-lg" />
                 </div>
-                <div className="absolute -top-2 -left-2 w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center animate-float" style={{animationDelay: '2s'}}>
-                  <Shield className="w-3 h-3 text-white" />
+                <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center animate-float shadow-xl border-2 border-white" style={{ animationDelay: '1s' }}>
+                  <Zap className="w-4 h-4 text-white drop-shadow-lg" />
+                </div>
+                <div className="absolute -top-3 -left-3 w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center animate-float shadow-xl border-2 border-white" style={{ animationDelay: '2s' }}>
+                  <Shield className="w-4 h-4 text-white drop-shadow-lg" />
                 </div>
               </div>
-              
-              {/* Pulsing rings */}
-              <div className="absolute inset-0 rounded-full border-2 border-red-500/30 animate-ping"></div>
-              <div className="absolute inset-0 rounded-full border border-red-400/20 scale-125 animate-pulse"></div>
+
+              {/* Animated rings around logo - solid colors */}
+              <div className="absolute inset-0 rounded-3xl border-2 border-red-400 animate-ping opacity-30"></div>
+              <div className="absolute inset-0 rounded-3xl border border-red-300 scale-125 animate-pulse opacity-20"></div>
+              <div className="absolute inset-0 rounded-3xl border border-red-200 scale-150 animate-pulse opacity-10" style={{ animationDelay: '1s' }}></div>
             </div>
 
             <div className="space-y-2">
@@ -255,7 +319,7 @@ export default function LoginPage() {
               >
                 {/* Button background animation */}
                 <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-400/20 to-red-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                
+
                 <div className="relative z-10 flex items-center justify-center">
                   {loading ? (
                     <>
@@ -278,7 +342,7 @@ export default function LoginPage() {
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <h3 className="text-sm font-semibold text-slate-200">Comptes de démonstration</h3>
               </div>
-              
+
               <div className="grid gap-3">
                 <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-blue-500/30 transition-all duration-300 group">
                   <div>
@@ -287,7 +351,7 @@ export default function LoginPage() {
                   </div>
                   <Shield className="w-4 h-4 text-blue-400 opacity-50 group-hover:opacity-100 transition-all" />
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-purple-500/30 transition-all duration-300 group">
                   <div>
                     <div className="text-sm font-medium text-purple-300 group-hover:text-purple-200">Manager</div>
@@ -295,7 +359,7 @@ export default function LoginPage() {
                   </div>
                   <Star className="w-4 h-4 text-purple-400 opacity-50 group-hover:opacity-100 transition-all" />
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-green-500/30 transition-all duration-300 group">
                   <div>
                     <div className="text-sm font-medium text-green-300 group-hover:text-green-200">Employé</div>
@@ -316,9 +380,13 @@ export default function LoginPage() {
         </Card>
       </div>
 
-      {/* Additional floating elements */}
-      <div className="absolute top-10 right-10 w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full opacity-30 animate-float hidden md:block"></div>
-      <div className="absolute bottom-10 left-10 w-4 h-4 bg-gradient-to-br from-pink-400 to-red-500 rounded-full opacity-30 animate-float hidden md:block" style={{animationDelay: '3s'}}></div>
+      {/* Additional floating elements - only render when mounted */}
+      {isMounted && (
+        <>
+          <div className="absolute top-10 right-10 w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full opacity-30 animate-float hidden md:block"></div>
+          <div className="absolute bottom-10 left-10 w-4 h-4 bg-gradient-to-br from-pink-400 to-red-500 rounded-full opacity-30 animate-float hidden md:block" style={{ animationDelay: '3s' }}></div>
+        </>
+      )}
     </div>
   )
 }

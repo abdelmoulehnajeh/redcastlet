@@ -133,257 +133,289 @@ export default function AdminFinancePage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-1">Gestion Financière</h1>
-            <p className="text-white/90">Salaires, primes, pénalités et avances</p>
+    <div className="min-h-screen relative overflow-hidden animate-fade-in">
+      {/* Floating particles background (absolute, so sidebar stays visible) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-green-900/60 to-slate-900/80 backdrop-blur-[6px]" />
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-gradient-to-r from-green-400 to-blue-400 rounded-full opacity-30 animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 6}s`,
+              animationDuration: `${6 + Math.random() * 4}s`
+            }}
+          />
+        ))}
+      </div>
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-3 sm:p-4 lg:p-6 relative z-20 max-w-screen-xl mx-auto">
+        {/* Header */}
+        <div className="glass-card backdrop-blur-futuristic p-4 sm:p-6 lg:p-8 text-white shadow-2xl animate-fade-in relative overflow-hidden border border-white/10">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-900/30 via-green-800/40 to-blue-900/30 opacity-70 rounded-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-[shimmer_3s_ease-in-out_infinite] rounded-2xl" />
+          <div className="flex items-center space-x-4 relative z-10">
+            <div className="w-12 h-12 bg-gradient-to-br from-green-700/40 to-blue-700/40 rounded-xl flex items-center justify-center border border-white/10">
+              <DollarSign className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1 bg-gradient-to-r from-white via-green-200 to-blue-200 bg-clip-text text-transparent">Gestion Financière</h1>
+              <p className="text-slate-200 text-sm md:text-base">Salaires, primes, pénalités et avances</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Financial Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Masse Salariale</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+        {/* Financial Stats */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-green-900/60 to-slate-900/70">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Masse Salariale</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-300" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-400">{totalSalaries.toLocaleString()}€</div>
+              <p className="text-xs text-green-200">Total net à payer</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-green-900/60 to-slate-900/70">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Primes & Bonus</CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-300" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-400">+{totalBonuses.toLocaleString()}€</div>
+              <p className="text-xs text-blue-200">Récompenses</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-green-900/60 to-slate-900/70">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Pénalités</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-300" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-400">-{totalPenalties.toLocaleString()}€</div>
+              <p className="text-xs text-red-200">Retards & absences</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-green-900/60 to-slate-900/70">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Avances</CardTitle>
+              <CreditCard className="h-4 w-4 text-orange-300" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-400">-{totalAdvances.toLocaleString()}€</div>
+              <p className="text-xs text-orange-200">À déduire</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-green-900/60 to-slate-900/70">
+          <CardHeader>
+            <CardTitle className="text-white">Filtres</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{totalSalaries.toLocaleString()}€</div>
-            <p className="text-xs text-muted-foreground">Total net à payer</p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Primes & Bonus</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">+{totalBonuses.toLocaleString()}€</div>
-            <p className="text-xs text-muted-foreground">Récompenses</p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pénalités</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">-{totalPenalties.toLocaleString()}€</div>
-            <p className="text-xs text-muted-foreground">Retards & absences</p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avances</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">-{totalAdvances.toLocaleString()}€</div>
-            <p className="text-xs text-muted-foreground">À déduire</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtres</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un employé..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-green-300" />
+                  <Input
+                    placeholder="Rechercher un employé..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                  />
+                </div>
               </div>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-[180px] glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white">
+                  <SelectValue placeholder="Restaurant" />
+                </SelectTrigger>
+                <SelectContent className="glass-card bg-gradient-to-br from-slate-900/90 to-green-900/90 border border-white/10 text-white">
+                  <SelectItem value="all" className="glass-card bg-transparent text-white">Tous les restaurants</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id} className="glass-card bg-transparent text-white">
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-[150px] glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+              />
+              <Button variant="outline" className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
             </div>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Restaurant" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les restaurants</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-[150px]"
-            />
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Salary Management Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calculator className="w-5 h-5 mr-2" />
-            Gestion des Salaires
-          </CardTitle>
-          <CardDescription>Gérez les salaires, primes, pénalités et avances pour {selectedMonth}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employé</TableHead>
-                <TableHead>Restaurant</TableHead>
-                <TableHead>Salaire Base</TableHead>
-                <TableHead>Prime</TableHead>
-                <TableHead>Bonus</TableHead>
-                <TableHead>Avance</TableHead>
-                <TableHead>Pénalités</TableHead>
-                <TableHead>Net à Payer</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEmployees.map((employee) => {
-                const penalties =
-                  (employee.infractions || 0) * 15 + (employee.retard || 0) * 15 + (employee.absence || 0) * 10
-                const netSalary = calculateNetSalary(employee)
+        {/* Salary Management Table */}
+        <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-green-900/60 to-slate-900/70">
+          <CardHeader>
+            <CardTitle className="flex items-center text-white">
+              <Calculator className="w-5 h-5 mr-2" />
+              Gestion des Salaires
+            </CardTitle>
+            <CardDescription className="text-green-200">Gérez les salaires, primes, pénalités et avances pour {selectedMonth}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table className="text-white">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employé</TableHead>
+                  <TableHead>Restaurant</TableHead>
+                  <TableHead>Salaire Base</TableHead>
+                  <TableHead>Prime</TableHead>
+                  <TableHead>Bonus</TableHead>
+                  <TableHead>Avance</TableHead>
+                  <TableHead>Pénalités</TableHead>
+                  <TableHead>Net à Payer</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEmployees.map((employee) => {
+                  const penalties =
+                    (employee.infractions || 0) * 15 + (employee.retard || 0) * 15 + (employee.absence || 0) * 10
+                  const netSalary = calculateNetSalary(employee)
 
-                return (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">
-                      <div>
-                        <div className="font-semibold">
-                          {employee.prenom} {employee.nom}
+                  return (
+                    <TableRow key={employee.id} className="hover:bg-white/5 transition-colors">
+                      <TableCell className="font-medium">
+                        <div>
+                          <div className="font-semibold text-white">
+                            {employee.prenom} {employee.nom}
+                          </div>
+                          <div className="text-sm text-green-200">{employee.job_title}</div>
                         </div>
-                        <div className="text-sm text-muted-foreground">{employee.job_title}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{employee.location ? employee.location.name : "Non assigné"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">{(employee.salaire || 0).toLocaleString()}€</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSalaryUpdate(employee.id, "prime", (employee.prime || 0) - 50)}
-                          disabled={(employee.prime || 0) <= 0}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-16 text-center font-medium">{(employee.prime || 0).toLocaleString()}€</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSalaryUpdate(employee.id, "prime", (employee.prime || 0) + 50)}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSalaryUpdate(employee.id, "bonus", (employee.bonus || 0) - 25)}
-                          disabled={(employee.bonus || 0) <= 0}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-16 text-center font-medium text-green-600">
-                          {(employee.bonus || 0).toLocaleString()}€
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSalaryUpdate(employee.id, "bonus", (employee.bonus || 0) + 25)}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSalaryUpdate(employee.id, "avance", (employee.avance || 0) - 50)}
-                          disabled={(employee.avance || 0) <= 0}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-16 text-center font-medium text-orange-600">
-                          {(employee.avance || 0).toLocaleString()}€
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSalaryUpdate(employee.id, "avance", (employee.avance || 0) + 50)}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div className="text-red-600 font-medium">-{penalties}€</div>
-                        <div className="text-xs text-muted-foreground">
-                          {employee.retard || 0}R • {employee.absence || 0}A • {employee.infractions || 0}I
+                      </TableCell>
+                      <TableCell className="text-blue-200">{employee.location ? employee.location.name : "Non assigné"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-white">{(employee.salaire || 0).toLocaleString()}€</span>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-bold text-lg">
-                        <span className={netSalary >= 0 ? "text-green-600" : "text-red-600"}>
-                          {netSalary.toLocaleString()}€
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">
-                          <Banknote className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-          {filteredEmployees.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">Aucun employé trouvé</div>
-          )}
-        </CardContent>
-      </Card>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                            onClick={() => handleSalaryUpdate(employee.id, "prime", (employee.prime || 0) - 50)}
+                            disabled={(employee.prime || 0) <= 0}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="w-16 text-center font-medium text-white">{(employee.prime || 0).toLocaleString()}€</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                            onClick={() => handleSalaryUpdate(employee.id, "prime", (employee.prime || 0) + 50)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                            onClick={() => handleSalaryUpdate(employee.id, "bonus", (employee.bonus || 0) - 25)}
+                            disabled={(employee.bonus || 0) <= 0}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="w-16 text-center font-medium text-blue-300">
+                            {(employee.bonus || 0).toLocaleString()}€
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                            onClick={() => handleSalaryUpdate(employee.id, "bonus", (employee.bonus || 0) + 25)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                            onClick={() => handleSalaryUpdate(employee.id, "avance", (employee.avance || 0) - 50)}
+                            disabled={(employee.avance || 0) <= 0}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="w-16 text-center font-medium text-orange-300">
+                            {(employee.avance || 0).toLocaleString()}€
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white"
+                            onClick={() => handleSalaryUpdate(employee.id, "avance", (employee.avance || 0) + 50)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div className="text-red-400 font-medium">-{penalties}€</div>
+                          <div className="text-xs text-red-200">
+                            {employee.retard || 0}R • {employee.absence || 0}A • {employee.infractions || 0}I
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-bold text-lg">
+                          <span className={netSalary >= 0 ? "text-green-400" : "text-red-400"}>
+                            {netSalary.toLocaleString()}€
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white">
+                            <Banknote className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="glass-card bg-gradient-to-br from-slate-800/80 to-green-900/80 border border-white/10 text-white">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            {filteredEmployees.length === 0 && (
+              <div className="text-center py-8 text-green-200">Aucun employé trouvé</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   )
 }

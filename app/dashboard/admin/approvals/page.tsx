@@ -190,41 +190,55 @@ export default function AdminApprovalsPage() {
                        leaveRequests.filter(r => r.status === 'rejected').length
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 lg:space-y-8">
+    <div className="min-h-screen relative overflow-hidden animate-fade-in">
+      {/* Floating particles background (absolute, so sidebar stays visible) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-indigo-900/60 to-slate-900/80 backdrop-blur-[6px]" />
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-gradient-to-r from-indigo-400 to-blue-400 rounded-full opacity-30 animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 6}s`,
+              animationDuration: `${6 + Math.random() * 4}s`
+            }}
+          />
+        ))}
+      </div>
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-3 sm:p-4 lg:p-6 relative z-20 max-w-screen-xl mx-auto">
         {/* Enhanced Header - Responsive */}
-        <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl sm:rounded-3xl"></div>
-          <div className="absolute inset-0 bg-black/20 rounded-2xl sm:rounded-3xl"></div>
-          <div className="relative p-4 sm:p-6 lg:p-8 text-white">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center space-x-3 sm:space-x-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/20">
-                  <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2 tracking-tight">
-                    Approbations Admin
-                  </h1>
-                  <p className="text-white/90 text-sm sm:text-base lg:text-lg hidden sm:block">
-                    Validation finale des demandes et notifications système
-                  </p>
-                  <p className="text-white/90 text-sm sm:hidden">
-                    Validation des demandes
-                  </p>
-                </div>
+        <div className="glass-card backdrop-blur-futuristic p-4 sm:p-6 lg:p-8 text-white shadow-2xl animate-fade-in relative overflow-hidden border border-white/10">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/30 via-purple-900/40 to-blue-900/30 opacity-70 rounded-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-[shimmer_3s_ease-in-out_infinite] rounded-2xl" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative z-10">
+            <div className="flex items-center space-x-3 sm:space-x-6">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-indigo-700/40 to-purple-700/40 rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/10">
+                <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <Button 
-                onClick={handleRefresh}
-                variant="secondary"
-                size="sm"
-                className="bg-white/20 backdrop-blur-sm border-white/20 text-white hover:bg-white/30 w-full sm:w-auto"
-                disabled={refreshing}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
+              <div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2 tracking-tight bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">
+                  Approbations Admin
+                </h1>
+                <p className="text-slate-200 text-sm sm:text-base lg:text-lg hidden sm:block">
+                  Validation finale des demandes et notifications système
+                </p>
+                <p className="text-slate-200 text-sm sm:hidden">
+                  Validation des demandes
+                </p>
+              </div>
             </div>
+            <Button 
+              onClick={handleRefresh}
+              variant="secondary"
+              size="sm"
+              className="glass-card bg-gradient-to-br from-slate-800/80 to-indigo-900/80 border border-white/10 text-white hover:bg-white/30 w-full sm:w-auto"
+              disabled={refreshing}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
           </div>
         </div>
 
@@ -236,6 +250,7 @@ export default function AdminApprovalsPage() {
             icon={Clock}
             gradient="from-orange-500 to-amber-500"
             description="Actions requises"
+            glass
           />
           <StatsCard
             title="Approuvées"
@@ -243,6 +258,7 @@ export default function AdminApprovalsPage() {
             icon={CheckCircle}
             gradient="from-green-500 to-emerald-500"
             description="Validations réussies"
+            glass
           />
           <StatsCard
             title="Rejetées"
@@ -250,6 +266,7 @@ export default function AdminApprovalsPage() {
             icon={XCircle}
             gradient="from-red-500 to-rose-500"
             description="Demandes refusées"
+            glass
           />
           <StatsCard
             title="Total"
@@ -257,31 +274,38 @@ export default function AdminApprovalsPage() {
             icon={TrendingUp}
             gradient="from-blue-500 to-cyan-500"
             description="Toutes demandes"
+            glass
           />
         </div>
 
         {/* Filter Tabs - Mobile Responsive */}
-        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+        <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-indigo-900/60 to-slate-900/70">
           <CardContent className="p-3 sm:p-6">
             <div className="flex flex-wrap gap-2">
-              {['all', 'pending', 'approved', 'rejected'].map((status) => (
-                <Button
-                  key={status}
-                  variant={filter === status ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter(status as any)}
-                  className={`transition-all duration-200 flex-1 sm:flex-none min-w-0 ${
-                    filter === status 
-                      ? 'bg-indigo-600 text-white shadow-lg' 
-                      : 'hover:bg-indigo-50 hover:border-indigo-200'
-                  }`}
-                >
-                  <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm truncate">
-                    {status === 'all' ? 'Toutes' : status.charAt(0).toUpperCase() + status.slice(1)}
-                  </span>
-                </Button>
-              ))}
+              {['all', 'pending', 'approved', 'rejected'].map((status) => {
+                const isActive = filter === status;
+                let accent = '';
+                if (status === 'all') accent = 'from-indigo-700/80 to-blue-700/80';
+                if (status === 'pending') accent = 'from-orange-700/80 to-amber-700/80';
+                if (status === 'approved') accent = 'from-green-700/80 to-emerald-700/80';
+                if (status === 'rejected') accent = 'from-red-700/80 to-rose-700/80';
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setFilter(status as any)}
+                    className={`glass-card border border-white/10 px-4 py-2 rounded-xl flex-1 sm:flex-none min-w-0 flex items-center justify-center gap-2 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md
+                      ${isActive
+                        ? `bg-gradient-to-br ${accent} text-white ring-2 ring-indigo-400/60`
+                        : 'bg-gradient-to-br from-slate-800/70 to-indigo-900/70 text-indigo-200 hover:ring-2 hover:ring-indigo-400/30'}`}
+                  >
+                    <Filter className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-indigo-300'}`} />
+                    <span className="truncate">
+                      {status === 'all' ? 'Toutes' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -304,7 +328,7 @@ export default function AdminApprovalsPage() {
         )}
 
         {/* Admin Notifications - Mobile Responsive */}
-        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+        <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-indigo-900/60 to-slate-900/70">
           <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center space-x-3">
@@ -317,7 +341,7 @@ export default function AdminApprovalsPage() {
                 </div>
               </div>
               {adminApprovals.length > 0 && (
-                <Badge variant="secondary" className="px-2 py-1 text-xs sm:px-3 sm:text-sm self-start sm:self-auto">
+                <Badge variant="secondary" className="glass-card bg-gradient-to-br from-indigo-700/40 to-blue-700/40 text-indigo-100 border-0 px-2 py-1 text-xs sm:px-3 sm:text-sm self-start sm:self-auto shadow">
                   {adminApprovals.length} notification(s)
                 </Badge>
               )}
@@ -331,7 +355,7 @@ export default function AdminApprovalsPage() {
                     key={notif.id}
                     notification={notif}
                     comment={comments[notif.id] || ""}
-                    onCommentChange={(value) => setComments(prev => ({ ...prev, [notif.id]: value }))}
+                    onCommentChange={(value: string) => setComments(prev => ({ ...prev, [notif.id]: value }))}
                     formatDate={formatDateTime}
                   />
                 ))}
@@ -347,7 +371,7 @@ export default function AdminApprovalsPage() {
         </Card>
 
         {/* Leave Requests - Mobile Responsive */}
-        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+        <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-indigo-900/60 to-slate-900/70">
           <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center space-x-3">
@@ -360,7 +384,7 @@ export default function AdminApprovalsPage() {
                 </div>
               </div>
               {leaveRequests.length > 0 && (
-                <Badge variant="secondary" className="px-2 py-1 text-xs sm:px-3 sm:text-sm self-start sm:self-auto">
+                <Badge variant="secondary" className="glass-card bg-gradient-to-br from-green-700/40 to-emerald-700/40 text-green-100 border-0 px-2 py-1 text-xs sm:px-3 sm:text-sm self-start sm:self-auto shadow">
                   {leaveRequests.length} demande(s)
                 </Badge>
               )}
@@ -374,7 +398,7 @@ export default function AdminApprovalsPage() {
                     key={request.id}
                     request={request}
                     comment={comments[request.id] || ""}
-                    onCommentChange={(value) => setComments(prev => ({ ...prev, [request.id]: value }))}
+                    onCommentChange={(value: string) => setComments(prev => ({ ...prev, [request.id]: value }))}
                     onApprove={() => handleLeaveApproval(request.id, "approved")}
                     onReject={() => handleLeaveApproval(request.id, "rejected")}
                     leaveTypes={leaveTypes}
@@ -428,14 +452,14 @@ const LoadingSkeleton = () => (
   </div>
 )
 
-const StatsCard = ({ title, value, icon: Icon, gradient, description }: any) => (
-  <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+const StatsCard = ({ title, value, icon: Icon, gradient, description, glass }: any) => (
+  <Card className={`border-0 shadow-lg ${glass ? 'glass-card backdrop-blur-futuristic border border-white/10 bg-gradient-to-br from-slate-900/70 via-indigo-900/60 to-slate-900/70' : 'bg-white/70 backdrop-blur-sm'} hover:shadow-xl transition-all duration-300`}>
     <CardContent className="p-3 sm:p-4 lg:p-6">
       <div className="flex items-center justify-between">
         <div className="space-y-1 sm:space-y-2 min-w-0 flex-1">
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
-          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground hidden sm:block">{description}</p>
+          <p className="text-xs sm:text-sm font-medium text-indigo-200 truncate">{title}</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">{value}</p>
+          <p className="text-xs text-indigo-200 hidden sm:block">{description}</p>
         </div>
         <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-r ${gradient} rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 ml-2`}>
           <Icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
@@ -446,7 +470,7 @@ const StatsCard = ({ title, value, icon: Icon, gradient, description }: any) => 
 )
 
 const NotificationCard = ({ notification, comment, onCommentChange, formatDate }: any) => (
-  <div className="border border-border/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 bg-gradient-to-r from-white to-gray-50 shadow-sm hover:shadow-md transition-all duration-200">
+  <div className="border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 glass-card bg-gradient-to-br from-slate-800/70 to-indigo-900/70 shadow-sm hover:shadow-md transition-all duration-200">
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
       <div className="space-y-2">
         <div className="flex items-center space-x-2 sm:space-x-3">
@@ -454,8 +478,17 @@ const NotificationCard = ({ notification, comment, onCommentChange, formatDate }
           <h3 className="text-base sm:text-lg font-semibold text-foreground truncate">
             {notification.type.charAt(0).toUpperCase() + notification.type.slice(1).replace('_', ' ')}
           </h3>
-          <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-xs">
-            {notification.status}
+          <Badge
+            variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"}
+            className={`text-xs px-2 py-1 rounded-lg border-0 glass-card shadow ${
+              notification.status === 'pending'
+                ? 'bg-gradient-to-br from-orange-700/40 to-amber-700/40 text-orange-100'
+                : notification.status === 'approved'
+                ? 'bg-gradient-to-br from-green-700/40 to-emerald-700/40 text-green-100'
+                : 'bg-gradient-to-br from-red-700/40 to-rose-700/40 text-red-100'
+            }`}
+          >
+            {notification.status.charAt(0).toUpperCase() + notification.status.slice(1)}
           </Badge>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm text-muted-foreground">
@@ -466,7 +499,7 @@ const NotificationCard = ({ notification, comment, onCommentChange, formatDate }
       </div>
     </div>
 
-    <div className="p-3 sm:p-4 bg-slate-50 rounded-lg sm:rounded-xl">
+    <div className="p-3 sm:p-4 glass-card bg-gradient-to-br from-slate-900/80 to-indigo-900/80 rounded-lg sm:rounded-xl">
       <p className="text-xs text-muted-foreground mb-2">Données de la notification</p>
       <pre className="text-xs overflow-x-auto max-h-24 sm:max-h-32 whitespace-pre-wrap break-words text-slate-700">
         {notification.data}
@@ -479,13 +512,13 @@ const NotificationCard = ({ notification, comment, onCommentChange, formatDate }
         value={comment}
         onChange={(e) => onCommentChange(e.target.value)}
         rows={2}
-        className="border-slate-200 focus:border-indigo-300 text-sm"
+        className="glass-card bg-gradient-to-br from-slate-900/80 to-indigo-900/80 border border-white/10 text-white text-sm"
       />
       
       {notification.status === "pending" && (
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Button
-            className="bg-green-600 hover:bg-green-700 text-white shadow-md flex-1 sm:flex-none"
+            className="bg-green-600 hover:bg-green-700 text-white shadow-md flex-1 sm:flex-none glass-card"
             size="sm"
             onClick={() => toast.success("Notification acceptée (implémentation backend requise)")}
           >
@@ -494,7 +527,7 @@ const NotificationCard = ({ notification, comment, onCommentChange, formatDate }
           </Button>
           <Button
             variant="destructive"
-            className="shadow-md flex-1 sm:flex-none"
+            className="shadow-md flex-1 sm:flex-none glass-card"
             size="sm"
             onClick={() => toast.success("Notification rejetée (implémentation backend requise)")}
           >
@@ -515,59 +548,59 @@ const LeaveRequestCard = ({ request, comment, onCommentChange, onApprove, onReje
   }
 
   return (
-    <div className="border border-border/50 rounded-2xl p-6 space-y-4 bg-gradient-to-r from-white to-blue-50/30 shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="border border-white/10 rounded-2xl p-6 space-y-4 glass-card bg-gradient-to-br from-slate-800/70 to-indigo-900/70 shadow-sm hover:shadow-md transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="space-y-3">
           <div className="flex items-center space-x-3">
             <span className="text-2xl">{leaveType.icon}</span>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">{leaveType.label}</h3>
+              <h3 className="text-lg font-semibold text-white">{leaveType.label}</h3>
               <div className="flex items-center space-x-2 mt-1">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
+                <Users className="w-4 h-4 text-indigo-200" />
+                <span className="text-sm text-indigo-200">
                   {request.employee.profile.first_name} {request.employee.profile.last_name}
                 </span>
               </div>
             </div>
           </div>
         </div>
-        <Badge variant="secondary" className="flex items-center gap-1">
+        <Badge variant="secondary" className="flex items-center gap-1 glass-card bg-gradient-to-br from-indigo-700/40 to-blue-700/40 text-indigo-100 border-0 shadow">
           <Clock className="w-3 h-3" />
           En attente
         </Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-          <Calendar className="w-5 h-5 text-blue-600" />
+        <div className="flex items-center space-x-3 p-3 glass-card bg-gradient-to-br from-blue-900/70 to-indigo-900/80 rounded-lg border border-white/10">
+          <Calendar className="w-5 h-5 text-blue-200" />
           <div>
-            <p className="text-xs text-muted-foreground">Début</p>
-            <p className="text-sm font-medium">{formatDate(request.start_date)}</p>
+            <p className="text-xs text-blue-200">Début</p>
+            <p className="text-sm font-medium text-white">{formatDate(request.start_date)}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg">
-          <Calendar className="w-5 h-5 text-red-600" />
+        <div className="flex items-center space-x-3 p-3 glass-card bg-gradient-to-br from-red-900/70 to-indigo-900/80 rounded-lg border border-white/10">
+          <Calendar className="w-5 h-5 text-red-200" />
           <div>
-            <p className="text-xs text-muted-foreground">Fin</p>
-            <p className="text-sm font-medium">{formatDate(request.end_date)}</p>
+            <p className="text-xs text-red-200">Fin</p>
+            <p className="text-sm font-medium text-white">{formatDate(request.end_date)}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-          <Clock className="w-5 h-5 text-green-600" />
+        <div className="flex items-center space-x-3 p-3 glass-card bg-gradient-to-br from-green-900/70 to-indigo-900/80 rounded-lg border border-white/10">
+          <Clock className="w-5 h-5 text-green-200" />
           <div>
-            <p className="text-xs text-muted-foreground">Durée</p>
-            <p className="text-sm font-medium">{request.days_count} jour(s)</p>
+            <p className="text-xs text-green-200">Durée</p>
+            <p className="text-sm font-medium text-white">{request.days_count} jour(s)</p>
           </div>
         </div>
       </div>
 
       {request.reason && (
-        <div className="p-4 bg-amber-50 rounded-lg border-l-4 border-amber-400">
+        <div className="p-4 glass-card bg-gradient-to-br from-amber-900/70 to-indigo-900/80 rounded-lg border-l-4 border-amber-400 border border-white/10">
           <div className="flex items-start space-x-2">
-            <MessageSquare className="w-4 h-4 text-amber-600 mt-0.5" />
+            <MessageSquare className="w-4 h-4 text-amber-200 mt-0.5" />
             <div>
-              <p className="text-xs text-amber-700 font-medium mb-1">Motif de la demande</p>
-              <p className="text-sm text-amber-800">{request.reason}</p>
+              <p className="text-xs text-amber-200 font-medium mb-1">Motif de la demande</p>
+              <p className="text-sm text-white">{request.reason}</p>
             </div>
           </div>
         </div>
@@ -579,14 +612,13 @@ const LeaveRequestCard = ({ request, comment, onCommentChange, onApprove, onReje
           value={comment}
           onChange={(e) => onCommentChange(e.target.value)}
           rows={2}
-          className="border-slate-200 focus:border-indigo-300"
+          className="glass-card bg-gradient-to-br from-slate-900/90 to-indigo-900/90 border border-white/10 text-white placeholder:text-indigo-300 focus:ring-2 focus:ring-indigo-500"
         />
-        
         <div className="flex space-x-3">
           <Button
             onClick={onApprove}
             disabled={isLoading}
-            className="bg-green-600 hover:bg-green-700 text-white shadow-md flex-1 md:flex-none"
+            className="bg-green-700 hover:bg-green-800 text-white shadow-md flex-1 md:flex-none glass-card border border-white/10"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             {isLoading ? "En cours..." : "Approuver"}
@@ -595,7 +627,7 @@ const LeaveRequestCard = ({ request, comment, onCommentChange, onApprove, onReje
             onClick={onReject}
             disabled={isLoading}
             variant="destructive"
-            className="shadow-md flex-1 md:flex-none"
+            className="shadow-md flex-1 md:flex-none glass-card border border-white/10"
           >
             <XCircle className="w-4 h-4 mr-2" />
             Rejeter
@@ -608,10 +640,10 @@ const LeaveRequestCard = ({ request, comment, onCommentChange, onApprove, onReje
 
 const EmptyState = ({ icon: Icon, title, description }: any) => (
   <div className="text-center py-16">
-    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-      <Icon className="w-10 h-10 text-gray-400" />
+    <div className="w-20 h-20 mx-auto mb-6 glass-card bg-gradient-to-br from-slate-800/70 to-indigo-900/70 rounded-full flex items-center justify-center">
+      <Icon className="w-10 h-10 text-indigo-300" />
     </div>
-    <h3 className="text-xl font-semibold text-foreground mb-2">{title}</h3>
-    <p className="text-muted-foreground max-w-md mx-auto">{description}</p>
+    <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
+    <p className="text-indigo-200 max-w-md mx-auto">{description}</p>
   </div>
 )

@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ["pg"],
-  },
+  serverExternalPackages: ["pg"],
   env: {
     DATABASE_URL: process.env.DATABASE_URL || "postgresql://username:password@localhost:5432/restaurant_db",
   },

@@ -204,50 +204,56 @@ export default function ManagerLeaveRequestsPage() {
   const rejectedRequests = leaveRequests.filter((req: any) => req.status === "rejected").length
 
   return (
-    <div className="space-y-6">
+    <div className="relative min-h-screen py-8 px-2 sm:px-6 md:px-10 lg:px-20">
+      {/* Animated background */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="w-full h-full animate-float bg-gradient-to-br from-[#23243a]/60 via-[#2d2e4a]/60 to-[#1a1b2e]/80 opacity-90 blur-2xl" />
+        {/* Optionally add particles or animated SVGs here for more effect */}
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Demandes de Congé</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">Demandes de Congé</h1>
           <p className="text-muted-foreground">Gérez les demandes de congé de votre équipe</p>
         </div>
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-orange-500" />
-          <span className="text-sm font-medium">{pendingRequests} en attente</span>
+        <div className="flex items-center gap-2 bg-glass-card px-4 py-2 rounded-xl shadow border border-white/10">
+          <AlertCircle className="w-5 h-5 text-orange-400" />
+          <span className="text-sm font-medium text-orange-200">{pendingRequests} en attente</span>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
+        <Card className="glass-card bg-gradient-to-br from-yellow-900/40 to-yellow-700/10 border-yellow-400/20">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-yellow-600" />
+              <Clock className="w-5 h-5 text-yellow-400" />
               <div>
-                <p className="text-2xl font-bold">{pendingRequests}</p>
-                <p className="text-sm text-muted-foreground">En attente</p>
+                <p className="text-2xl font-bold text-yellow-100">{pendingRequests}</p>
+                <p className="text-sm text-yellow-200/80">En attente</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="glass-card bg-gradient-to-br from-green-900/40 to-green-700/10 border-green-400/20">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Check className="w-5 h-5 text-green-600" />
+              <Check className="w-5 h-5 text-green-400" />
               <div>
-                <p className="text-2xl font-bold">{approvedRequests}</p>
-                <p className="text-sm text-muted-foreground">Approuvées</p>
+                <p className="text-2xl font-bold text-green-100">{approvedRequests}</p>
+                <p className="text-sm text-green-200/80">Approuvées</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="glass-card bg-gradient-to-br from-red-900/40 to-red-700/10 border-red-400/20">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <X className="w-5 h-5 text-red-600" />
+              <X className="w-5 h-5 text-red-400" />
               <div>
-                <p className="text-2xl font-bold">{rejectedRequests}</p>
-                <p className="text-sm text-muted-foreground">Rejetées</p>
+                <p className="text-2xl font-bold text-red-100">{rejectedRequests}</p>
+                <p className="text-sm text-red-200/80">Rejetées</p>
               </div>
             </div>
           </CardContent>
@@ -255,7 +261,7 @@ export default function ManagerLeaveRequestsPage() {
       </div>
 
       {/* Search and Filters */}
-      <Card>
+      <Card className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -264,15 +270,15 @@ export default function ManagerLeaveRequestsPage() {
                 placeholder="Rechercher par employé ou raison..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-glass-card text-white placeholder:text-gray-300 border-white/10 focus:ring-accent/40"
               />
             </div>
             <div className="flex gap-2">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-32 glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
                   <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="pending">En attente</SelectItem>
                   <SelectItem value="approved">Approuvé</SelectItem>
@@ -280,10 +286,10 @@ export default function ManagerLeaveRequestsPage() {
                 </SelectContent>
               </Select>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-32 glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
                   <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="vacation">Vacances</SelectItem>
                   <SelectItem value="sick">Maladie</SelectItem>
@@ -299,18 +305,18 @@ export default function ManagerLeaveRequestsPage() {
       {/* Leave Requests List */}
       <div className="space-y-4">
         {filteredRequests.map((request: any) => (
-          <Card key={request.id} className="hover:shadow-md transition-shadow">
+          <Card key={request.id} className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 hover:shadow-xl transition-shadow">
             <CardHeader>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
                     {request.employee.profile?.first_name?.[0] || request.employee.username[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg truncate">
+                    <CardTitle className="text-lg truncate text-white drop-shadow">
                       {request.employee.profile?.first_name} {request.employee.profile?.last_name}
                     </CardTitle>
-                    <CardDescription className="truncate">@{request.employee.username}</CardDescription>
+                    <CardDescription className="truncate text-gray-300">@{request.employee.username}</CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -324,26 +330,26 @@ export default function ManagerLeaveRequestsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Date de début</p>
-                  <p className="font-medium">{formatDate(request.start_date)}</p>
+                  <p className="font-medium text-white">{formatDate(request.start_date)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Date de fin</p>
-                  <p className="font-medium">{formatDate(request.end_date)}</p>
+                  <p className="font-medium text-white">{formatDate(request.end_date)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Durée</p>
-                  <p className="font-medium">{calculateDays(request.start_date, request.end_date)} jour(s)</p>
+                  <p className="font-medium text-white">{calculateDays(request.start_date, request.end_date)} jour(s)</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Demandé le</p>
-                  <p className="font-medium">{formatDate(request.created_at)}</p>
+                  <p className="font-medium text-white">{formatDate(request.created_at)}</p>
                 </div>
               </div>
 
               {request.reason && (
                 <div>
                   <p className="text-muted-foreground text-sm mb-1">Raison</p>
-                  <p className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">{request.reason}</p>
+                  <p className="text-sm bg-glass-card/80 p-3 rounded-lg text-white border border-white/10">{request.reason}</p>
                 </div>
               )}
 
@@ -353,7 +359,7 @@ export default function ManagerLeaveRequestsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => openApprovalDialog(request, "reject")}
-                    className="text-red-600 hover:text-red-700 bg-transparent"
+                    className="text-red-400 hover:text-red-500 border-red-400/40 bg-transparent hover:bg-red-900/10"
                   >
                     <X className="w-4 h-4 mr-1" />
                     Rejeter
@@ -361,7 +367,7 @@ export default function ManagerLeaveRequestsPage() {
                   <Button
                     size="sm"
                     onClick={() => openApprovalDialog(request, "approve")}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-green-600/90 hover:bg-green-700/90 text-white shadow"
                   >
                     <Check className="w-4 h-4 mr-1" />
                     Approuver
@@ -370,7 +376,7 @@ export default function ManagerLeaveRequestsPage() {
               )}
 
               {request.status !== "pending" && request.approved_by && (
-                <div className="text-sm text-muted-foreground pt-2 border-t">
+                <div className="text-sm text-muted-foreground pt-2 border-t border-white/10">
                   {request.status === "approved" ? "Approuvé" : "Rejeté"} par {request.approved_by.username} le{" "}
                   {formatDate(request.approved_at)}
                 </div>
@@ -381,10 +387,10 @@ export default function ManagerLeaveRequestsPage() {
       </div>
 
       {filteredRequests.length === 0 && (
-        <Card>
+        <Card className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
           <CardContent className="text-center py-12">
             <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Aucune demande trouvée</h3>
+            <h3 className="text-lg font-medium mb-2 text-white">Aucune demande trouvée</h3>
             <p className="text-muted-foreground">
               {searchTerm || filterStatus !== "all" || filterType !== "all"
                 ? "Aucune demande ne correspond à vos critères de recherche."
@@ -396,10 +402,10 @@ export default function ManagerLeaveRequestsPage() {
 
       {/* Approval Dialog */}
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{approvalAction === "approve" ? "Approuver" : "Rejeter"} la demande</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-white drop-shadow">{approvalAction === "approve" ? "Approuver" : "Rejeter"} la demande</DialogTitle>
+            <DialogDescription className="text-gray-200">
               {selectedRequest && (
                 <>
                   Demande de {selectedRequest.employee.profile?.first_name}{" "}
@@ -411,7 +417,7 @@ export default function ManagerLeaveRequestsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="comments">
+              <Label htmlFor="comments" className="text-white">
                 Commentaires {approvalAction === "reject" ? "(obligatoire)" : "(optionnel)"}
               </Label>
               <Textarea
@@ -420,17 +426,20 @@ export default function ManagerLeaveRequestsPage() {
                 value={approvalComments}
                 onChange={(e) => setApprovalComments(e.target.value)}
                 rows={3}
+                className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApprovalDialog(false)}>
+            <Button variant="outline" onClick={() => setShowApprovalDialog(false)} className="text-white border-white/20">
               Annuler
             </Button>
             <Button
               onClick={handleApproval}
               className={
-                approvalAction === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                approvalAction === "approve"
+                  ? "bg-green-600/90 hover:bg-green-700/90 text-white shadow"
+                  : "bg-red-600/90 hover:bg-red-700/90 text-white shadow"
               }
               disabled={approvalAction === "reject" && !approvalComments.trim()}
             >
