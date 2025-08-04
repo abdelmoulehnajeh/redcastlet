@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -131,12 +131,27 @@ export default function AdminApprovalsPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const formatDate = (dateInput: string | number | null | undefined) => {
+    let dateObj: Date | null = null;
+    if (dateInput) {
+      if (typeof dateInput === 'number') {
+        dateObj = new Date(dateInput);
+      } else if (typeof dateInput === 'string') {
+        const parsed = Date.parse(dateInput);
+        if (!isNaN(parsed)) {
+          dateObj = new Date(parsed);
+        } else if (!isNaN(Number(dateInput))) {
+          dateObj = new Date(Number(dateInput));
+        }
+      }
+    }
+    return dateObj && !isNaN(dateObj.getTime())
+      ? dateObj.toLocaleDateString("fr-FR", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : 'Date inconnue';
   }
 
   const formatDateTime = (dateString: string) => {
@@ -356,7 +371,7 @@ export default function AdminApprovalsPage() {
                     notification={notif}
                     comment={comments[notif.id] || ""}
                     onCommentChange={(value: string) => setComments(prev => ({ ...prev, [notif.id]: value }))}
-                    formatDate={formatDateTime}
+                    formatDate={formatDate}
                   />
                 ))}
               </div>

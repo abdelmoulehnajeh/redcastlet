@@ -190,29 +190,33 @@ const LocationDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="w-10 h-10 rounded-lg" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
+      <div className="relative min-h-[400px] py-8 px-2 sm:px-6 md:px-10 lg:px-20">
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="w-full h-full animate-float bg-gradient-to-br from-[#23243a]/60 via-[#2d2e4a]/60 to-[#1a1b2e]/80 opacity-90 blur-2xl" />
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <Skeleton className="w-12 h-12 rounded-xl" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-6 w-8" />
-                    <Skeleton className="h-4 w-20" />
+        <div className="space-y-6">
+          <div className="flex items-center space-x-4">
+            <Skeleton className="w-10 h-10 rounded-lg bg-glass-card" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48 bg-glass-card" />
+              <Skeleton className="h-4 w-32 bg-glass-card" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4">
+                    <Skeleton className="w-12 h-12 rounded-xl bg-glass-card" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-6 w-8 bg-glass-card" />
+                      <Skeleton className="h-4 w-20 bg-glass-card" />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -220,12 +224,15 @@ const LocationDetailPage = () => {
 
   if (!location) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
+      <div className="relative flex items-center justify-center min-h-[400px] py-8 px-2 sm:px-6 md:px-10 lg:px-20">
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="w-full h-full animate-float bg-gradient-to-br from-[#23243a]/60 via-[#2d2e4a]/60 to-[#1a1b2e]/80 opacity-90 blur-2xl" />
+        </div>
+        <div className="text-center glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 p-8 rounded-2xl shadow-xl">
           <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Restaurant non trouvé</h3>
+          <h3 className="text-lg font-semibold mb-2 text-white">Restaurant non trouvé</h3>
           <p className="text-muted-foreground mb-4">Ce restaurant n'existe pas ou a été supprimé.</p>
-          <Button onClick={() => router.back()}>
+          <Button onClick={() => router.back()} className="glass-card bg-gradient-to-br from-red-700/80 to-red-900/60 text-white shadow hover:bg-red-700/80 hover:border-red-400/60 border border-red-400/30">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour
           </Button>
@@ -238,16 +245,21 @@ const LocationDetailPage = () => {
   const activeEmployees = location.employees.filter((emp) => emp.status === "active").length
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="relative min-h-screen py-8 px-2 sm:px-6 md:px-10 lg:px-20 animate-fade-in">
+      {/* Animated background */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="w-full h-full animate-float bg-gradient-to-br from-[#23243a]/60 via-[#2d2e4a]/60 to-[#1a1b2e]/80 opacity-90 blur-2xl" />
+      </div>
+
       {/* Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-6 text-white shadow-lg">
+      <div className="glass-card bg-gradient-to-r from-red-700/80 to-red-900/60 rounded-2xl p-6 text-white shadow-xl border border-white/10 mb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.back()}
-              className="text-white border-white/30 hover:bg-white/10"
+              className="glass-card bg-gradient-to-br from-white/10 to-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-accent/60 focus:ring-accent/40 shadow"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Retour
@@ -256,7 +268,7 @@ const LocationDetailPage = () => {
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-1">{location.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1 drop-shadow">{location.name}</h1>
               <div className="flex items-center text-white/90 text-sm">
                 <MapPin className="w-4 h-4 mr-1" />
                 {location.address}
@@ -273,44 +285,42 @@ const LocationDetailPage = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2">
+        <Card className="glass-card bg-gradient-to-br from-blue-900/40 to-blue-700/10 border-blue-400/20">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 bg-blue-900/40 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{location.employees.length}</p>
-                <p className="text-sm text-muted-foreground">Total Employés</p>
+                <p className="text-2xl font-bold text-blue-100">{location.employees.length}</p>
+                <p className="text-sm text-blue-200/80">Total Employés</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="glass-card bg-gradient-to-br from-green-900/40 to-green-700/10 border-green-400/20">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="w-12 h-12 bg-green-900/40 rounded-xl flex items-center justify-center">
+                <UserCheck className="w-6 h-6 text-green-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeEmployees}</p>
-                <p className="text-sm text-muted-foreground">Employés Actifs</p>
+                <p className="text-2xl font-bold text-green-100">{activeEmployees}</p>
+                <p className="text-sm text-green-200/80">Employés Actifs</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="glass-card bg-gradient-to-br from-yellow-900/40 to-yellow-700/10 border-yellow-400/20">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              <div className="w-12 h-12 bg-yellow-900/40 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-yellow-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalSalary.toLocaleString()}€</p>
-                <p className="text-sm text-muted-foreground">Masse Salariale</p>
+                <p className="text-2xl font-bold text-yellow-100">{totalSalary.toLocaleString()}€</p>
+                <p className="text-sm text-yellow-200/80">Masse Salariale</p>
               </div>
             </div>
           </CardContent>
@@ -318,94 +328,101 @@ const LocationDetailPage = () => {
       </div>
 
       {/* Employees */}
-      <Card>
+      <Card className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-white drop-shadow">
                 <Users className="w-5 h-5 mr-2" />
-                Équipe - {location.name}
+                {location.name}
               </CardTitle>
-              <CardDescription>Gérez les employés de ce restaurant</CardDescription>
+              <CardDescription className="text-gray-200">Gérez les employés de ce restaurant</CardDescription>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-red-600 hover:bg-red-700">
+                <Button className="glass-card bg-gradient-to-br from-red-700/80 to-red-900/60 text-white shadow hover:bg-red-700/80 hover:border-red-400/60 border border-red-400/30">
                   <Plus className="w-4 h-4 mr-2" />
                   Ajouter Employé
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
                 <DialogHeader>
-                  <DialogTitle>Ajouter un Employé</DialogTitle>
-                  <DialogDescription>Créez un nouveau compte employé pour ce restaurant.</DialogDescription>
+                  <DialogTitle className="text-white drop-shadow">Ajouter un Employé</DialogTitle>
+                  <DialogDescription className="text-gray-200">Créez un nouveau compte employé pour ce restaurant.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="prenom">Prénom</Label>
+                      <Label htmlFor="prenom" className="text-white">Prénom</Label>
                       <Input
                         id="prenom"
                         value={formData.prenom}
                         onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
+                        className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="nom">Nom</Label>
+                      <Label htmlFor="nom" className="text-white">Nom</Label>
                       <Input
                         id="nom"
                         value={formData.nom}
                         onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                        className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                       />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="username">Nom d'utilisateur</Label>
+                    <Label htmlFor="username" className="text-white">Nom d'utilisateur</Label>
                     <Input
                       id="username"
                       value={formData.username}
                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-white">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="telephone">Téléphone</Label>
+                    <Label htmlFor="telephone" className="text-white">Téléphone</Label>
                     <Input
                       id="telephone"
                       value={formData.telephone}
                       onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
+                      className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="job_title">Poste</Label>
+                    <Label htmlFor="job_title" className="text-white">Poste</Label>
                     <Input
                       id="job_title"
                       value={formData.job_title}
                       onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                      className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="salaire">Salaire (€)</Label>
+                    <Label htmlFor="salaire" className="text-white">Salaire (€)</Label>
                     <Input
                       id="salaire"
                       type="number"
                       value={formData.salaire}
                       onChange={(e) => setFormData({ ...formData, salaire: e.target.value })}
+                      className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
                     />
                   </div>
                   <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="glass-card bg-gradient-to-br from-white/10 to-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-accent/60 focus:ring-accent/40">
                       Annuler
                     </Button>
-                    <Button onClick={handleAddEmployee} className="bg-red-600 hover:bg-red-700">
+                    <Button onClick={handleAddEmployee} className="glass-card bg-gradient-to-br from-red-700/80 to-red-900/60 text-white shadow hover:bg-red-700/80 hover:border-red-400/60 border border-red-400/30">
                       Ajouter
                     </Button>
                   </div>
@@ -418,7 +435,7 @@ const LocationDetailPage = () => {
           {location.employees.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Aucun employé</h3>
+              <h3 className="text-lg font-semibold mb-2 text-white">Aucun employé</h3>
               <p className="text-muted-foreground">Ajoutez votre premier employé pour ce restaurant.</p>
             </div>
           ) : (
@@ -426,50 +443,50 @@ const LocationDetailPage = () => {
               {location.employees.map((employee) => (
                 <div
                   key={employee.id}
-                  className="border border-border rounded-xl p-6 space-y-4 hover:shadow-lg transition-all hover:border-red-200"
+                  className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 rounded-xl p-6 space-y-4 hover:shadow-xl transition-all hover:border-red-200"
                 >
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-12 h-12">
-                      <AvatarFallback className="bg-red-100 text-red-600 font-semibold">
+                      <AvatarFallback className="bg-red-900/40 text-red-200 font-semibold">
                         {employee.profile.first_name?.[0] || employee.prenom?.[0] || ""}
                         {employee.profile.last_name?.[0] || employee.nom?.[0] || ""}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h4 className="font-semibold text-foreground">
+                      <h4 className="font-semibold text-white drop-shadow">
                         {employee.profile.first_name || employee.prenom} {employee.profile.last_name || employee.nom}
                       </h4>
-                      <p className="text-sm text-muted-foreground">{employee.job_title}</p>
+                      <p className="text-sm text-gray-200">{employee.job_title}</p>
                     </div>
                   </div>
 
                   <div className="space-y-3 text-sm">
-                    <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-gray-300">
                       <Mail className="w-4 h-4 mr-2" />
                       {employee.email}
                     </div>
                     {(employee.profile.phone || employee.telephone) && (
-                      <div className="flex items-center text-muted-foreground">
+                      <div className="flex items-center text-gray-300">
                         <Phone className="w-4 h-4 mr-2" />
                         {employee.profile.phone || employee.telephone}
                       </div>
                     )}
                     {employee.salaire && (
-                      <div className="flex items-center text-muted-foreground">
+                      <div className="flex items-center text-gray-300">
                         <DollarSign className="w-4 h-4 mr-2" />
                         {employee.salaire.toLocaleString()}€
                       </div>
                     )}
-                    <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-gray-300">
                       <Clock className="w-4 h-4 mr-2" />
                       Depuis {new Date(employee.created_at).toLocaleDateString("fr-FR")}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
                     <Badge
                       variant={employee.status === "active" ? "default" : "secondary"}
-                      className="bg-green-100 text-green-700"
+                      className={employee.status === "active" ? "bg-green-900/40 text-green-200" : "bg-gray-700/60 text-gray-200"}
                     >
                       {employee.status === "active" ? "Actif" : "Inactif"}
                     </Badge>
@@ -478,7 +495,7 @@ const LocationDetailPage = () => {
                         size="sm"
                         variant="outline"
                         onClick={() => openEditDialog(employee)}
-                        className="hover:bg-red-50 hover:border-red-200"
+                        className="glass-card bg-gradient-to-br from-white/10 to-white/5 border border-white/20 text-white hover:bg-accent/10 hover:border-accent/60 focus:ring-accent/40"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -486,7 +503,7 @@ const LocationDetailPage = () => {
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteEmployee(employee.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                        className="glass-card bg-gradient-to-br from-red-900/40 to-red-900/10 border border-red-400/30 text-red-300 hover:bg-red-900/30 hover:border-red-400/60 focus:ring-red-400/40"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -501,38 +518,39 @@ const LocationDetailPage = () => {
 
       {/* Edit Employee Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
           <DialogHeader>
-            <DialogTitle>Modifier Employé</DialogTitle>
-            <DialogDescription>Modifiez les informations de l'employé.</DialogDescription>
+            <DialogTitle className="text-white drop-shadow">Modifier Employé</DialogTitle>
+            <DialogDescription className="text-gray-200">Modifiez les informations de l'employé.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-salaire">Salaire (€)</Label>
+              <Label htmlFor="edit-salaire" className="text-white">Salaire (€)</Label>
               <Input
                 id="edit-salaire"
                 type="number"
                 value={formData.salaire}
                 onChange={(e) => setFormData({ ...formData, salaire: e.target.value })}
+                className="bg-glass-card/80 text-white border-white/10 placeholder:text-gray-300"
               />
             </div>
             <div>
-              <Label htmlFor="edit-status">Statut</Label>
+              <Label htmlFor="edit-status" className="text-white">Statut</Label>
               <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
                   <SelectItem value="active">Actif</SelectItem>
                   <SelectItem value="inactive">Inactif</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="glass-card bg-gradient-to-br from-white/10 to-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-accent/60 focus:ring-accent/40">
                 Annuler
               </Button>
-              <Button onClick={handleEditEmployee} className="bg-red-600 hover:bg-red-700">
+              <Button onClick={handleEditEmployee} className="glass-card bg-gradient-to-br from-red-700/80 to-red-900/60 text-white shadow hover:bg-red-700/80 hover:border-red-400/60 border border-red-400/30">
                 Modifier
               </Button>
             </div>
