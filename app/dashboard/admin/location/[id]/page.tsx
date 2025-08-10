@@ -319,7 +319,7 @@ const LocationDetailPage = () => {
                 <DollarSign className="w-6 h-6 text-yellow-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-yellow-100">{totalSalary.toLocaleString()}€</p>
+                <p className="text-2xl font-bold text-yellow-100">{totalSalary.toLocaleString()}DT</p>
                 <p className="text-sm text-yellow-200/80">Masse Salariale</p>
               </div>
             </div>
@@ -409,7 +409,7 @@ const LocationDetailPage = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="salaire" className="text-white">Salaire (€)</Label>
+                    <Label htmlFor="salaire" className="text-white">Salaire (DT)</Label>
                     <Input
                       id="salaire"
                       type="number"
@@ -474,7 +474,7 @@ const LocationDetailPage = () => {
                     {employee.salaire && (
                       <div className="flex items-center text-gray-300">
                         <DollarSign className="w-4 h-4 mr-2" />
-                        {employee.salaire.toLocaleString()}€
+                        {employee.salaire.toLocaleString()}DT
                       </div>
                     )}
                     <div className="flex items-center text-gray-300">
@@ -525,7 +525,7 @@ const LocationDetailPage = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-salaire" className="text-white">Salaire (€)</Label>
+              <Label htmlFor="edit-salaire" className="text-white">Salaire (DT)</Label>
               <Input
                 id="edit-salaire"
                 type="number"

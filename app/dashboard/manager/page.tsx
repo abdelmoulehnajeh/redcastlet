@@ -54,7 +54,7 @@ export default function ManagerDashboard() {
     },
     {
       title: "Salaire Moyen",
-      value: `${averageSalary}€`,
+      value: `${averageSalary}DT`,
       description: "Par employé",
       icon: DollarSign,
       color: "text-restaurant-red",

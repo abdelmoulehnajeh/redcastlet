@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useMutation } from "@apollo/client"
 import { LOGIN_MUTATION } from "@/lib/graphql-queries"
 import { toast } from "sonner"
+import ElegantLanguageSelect from "@/components/BeautifulLanguageSelect"
 
 // Define types for particles
 interface Particle {
@@ -25,10 +26,87 @@ interface Particle {
 }
 
 export default function LoginPage() {
+  // Translations for French and Arabic
+  // Language selection state
+  const [lang, setLang] = useState<"fr" | "ar">("fr")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+
+  // Translations for French and Arabic
+  const translations: Record<"fr" | "ar", {
+    appName: string;
+    system: string;
+    secureModern: string;
+    username: string;
+    usernamePlaceholder: string;
+    password: string;
+    passwordPlaceholder: string;
+    login: string;
+    loggingIn: string;
+    demoAccounts: string;
+    admin: string;
+    manager: string;
+    employee: string;
+    adminCreds: string;
+    managerCreds: string;
+    employeeCreds: string;
+    securedBy: string;
+    errorWrong: string;
+    errorLogin: string;
+    french: string;
+    arabic: string;
+  }> = {
+    fr: {
+      appName: "Red Castle",
+      system: "Système de Gestion Restaurant",
+      secureModern: "Connexion sécurisée • Interface moderne",
+      username: "Nom d'utilisateur",
+      usernamePlaceholder: "Entrez votre nom d'utilisateur",
+      password: "Mot de passe",
+      passwordPlaceholder: "Entrez votre mot de passe",
+      login: "Se connecter",
+      loggingIn: "Connexion en cours...",
+      demoAccounts: "Comptes de démonstration",
+      admin: "Admin",
+      manager: "Manager",
+      employee: "Employé",
+      adminCreds: "admin / admin123",
+      managerCreds: "manager1 / manager123",
+      employeeCreds: "jean.dupont / employee123",
+      securedBy: "Sécurisé par Red Castle Technology",
+      errorWrong: "Nom d'utilisateur ou mot de passe incorrect",
+      errorLogin: "Erreur de connexion. Veuillez réessayer.",
+      french: "Français",
+      arabic: "العربية"
+    },
+    ar: {
+      appName: "Red Castle",
+      system: "نظام إدارة المطعم",
+      secureModern: "اتصال آمن • واجهة حديثة",
+      username: "اسم المستخدم",
+      usernamePlaceholder: "أدخل اسم المستخدم",
+      password: "كلمة المرور",
+      passwordPlaceholder: "أدخل كلمة المرور",
+      login: "تسجيل الدخول",
+      loggingIn: "جاري تسجيل الدخول...",
+      demoAccounts: "حسابات تجريبية",
+      admin: "مدير النظام",
+      manager: "مدير",
+      employee: "موظف",
+      adminCreds: "admin / admin123",
+      managerCreds: "manager1 / manager123",
+      employeeCreds: "jean.dupont / employee123",
+      securedBy: "محمي بواسطة تقنية ريد كاستل",
+      errorWrong: "اسم المستخدم أو كلمة المرور غير صحيحة",
+      errorLogin: "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.",
+      french: "فرنسي",
+      arabic: "العربية"
+    }
+  }
+
+  const t = translations[lang]
   const [isHovered, setIsHovered] = useState(false)
 
   // State for particles to avoid hydration mismatch
@@ -41,6 +119,28 @@ export default function LoginPage() {
   const [loginMutation, { loading }] = useMutation(LOGIN_MUTATION, {
     errorPolicy: "all",
   })
+
+  // Load language from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedLang = localStorage.getItem("lang")
+      if (storedLang === "ar" || storedLang === "fr") {
+        setLang(storedLang)
+      } else {
+        localStorage.setItem("lang", "fr")
+        setLang("fr")
+      }
+    }
+  }, [])
+
+  // Handle language change
+  const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedLang = e.target.value as "fr" | "ar"
+    setLang(selectedLang)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lang", selectedLang)
+    }
+  }
 
   // Generate particles only on client side
   useEffect(() => {
@@ -79,17 +179,12 @@ export default function LoginPage() {
     setError("")
 
     try {
-      console.log("Attempting login with:", { username, password })
-
       const { data, errors } = await loginMutation({
         variables: { username, password },
       })
 
-      console.log("Login response:", { data, errors })
-
       if (errors) {
-        console.error("GraphQL errors:", errors)
-        setError(errors[0]?.message || "Erreur de connexion")
+        setError(errors[0]?.message || t.errorLogin)
         return
       }
 
@@ -99,16 +194,16 @@ export default function LoginPage() {
           username: data.login.username,
           role: data.login.role,
           employee_id: data.login.employee_id,
+          location_id: data.login.location_id, 
         })
 
-        toast.success(`Bienvenue ${data.login.username}!`)
+        toast.success(`${lang === "ar" ? "مرحباً" : "Bienvenue"} ${data.login.username}!`)
         router.push("/dashboard")
       } else {
-        setError("Nom d'utilisateur ou mot de passe incorrect")
+        setError(t.errorWrong)
       }
     } catch (error: any) {
-      console.error("Login error:", error)
-      setError(error.message || "Erreur de connexion. Veuillez réessayer.")
+      setError(error.message || t.errorLogin)
     }
   }
 
@@ -145,14 +240,14 @@ export default function LoginPage() {
             <div className="w-20 h-20 border-4 border-blue-500/30 rounded-full animate-spin border-t-blue-500"></div>
             <div className="absolute inset-0 w-20 h-20 border-4 border-purple-500/30 rounded-full animate-spin border-t-purple-500" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
           </div>
-          <div className="text-white/80 text-lg font-medium animate-pulse">Chargement...</div>
+          <div className="text-white/80 text-lg font-medium animate-pulse">{t.loggingIn}</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Dynamic animated background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(120,119,198,0.3),transparent)] animate-pulse"></div>
@@ -188,6 +283,15 @@ export default function LoginPage() {
 
       {/* Main login card */}
       <div className="relative z-10 w-full max-w-md">
+        {/* Language select dropdown */}
+        <div className="mb-6 flex justify-end">
+
+          <ElegantLanguageSelect
+            lang={lang}
+            onLangChange={handleLangChange}
+            translations={t}
+          />
+        </div>
         <Card
           className="glass-card backdrop-blur-futuristic border-0 shadow-2xl transform transition-all duration-500 hover:scale-105 animate-fade-in"
           onMouseEnter={() => setIsHovered(true)}
@@ -203,10 +307,10 @@ export default function LoginPage() {
               <div className="relative w-36 h-36 mx-auto group">
                 {/* Bright glowing background */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white via-red-50 to-white rounded-3xl blur-2xl transition-all duration-500 group-hover:blur-3xl group-hover:scale-110"></div>
-                
+
                 {/* Solid bright logo background - NO OPACITY */}
                 <div className="relative w-full h-full bg-gradient-to-br from-white via-gray-50 to-white rounded-3xl border border-gray-200 shadow-2xl flex items-center justify-center overflow-hidden group-hover:border-red-300 transition-all duration-500">
-                  
+
                   {/* Logo image - large and bright */}
                   <img
                     src="/REDCASTELpg.png"
@@ -216,7 +320,7 @@ export default function LoginPage() {
                       filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.6)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15)) brightness(1.3) contrast(1.2) saturate(1.3)'
                     }}
                   />
-                  
+
                   {/* Subtle inner glow - solid colors only */}
                   <div className="absolute inset-4 bg-gradient-to-br from-red-50 via-white to-red-50 rounded-2xl"></div>
                 </div>
@@ -241,13 +345,13 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <CardTitle className="text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-                Red Castle
+                {t.appName}
               </CardTitle>
               <CardDescription className="text-slate-300 text-lg font-medium">
-                Système de Gestion Restaurant
+                {t.system}
               </CardDescription>
               <div className="text-slate-400 text-sm">
-                Connexion sécurisée • Interface moderne
+                {t.secureModern}
               </div>
             </div>
           </CardHeader>
@@ -262,13 +366,13 @@ export default function LoginPage() {
 
               <div className="space-y-3">
                 <Label htmlFor="username" className="text-slate-200 font-medium text-sm">
-                  Nom d'utilisateur
+                  {t.username}
                 </Label>
                 <div className="relative group">
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Entrez votre nom d'utilisateur"
+                    placeholder={t.usernamePlaceholder}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -281,13 +385,13 @@ export default function LoginPage() {
 
               <div className="space-y-3">
                 <Label htmlFor="password" className="text-slate-200 font-medium text-sm">
-                  Mot de passe
+                  {t.password}
                 </Label>
                 <div className="relative group">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Entrez votre mot de passe"
+                    placeholder={t.passwordPlaceholder}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -324,12 +428,12 @@ export default function LoginPage() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                      Connexion en cours...
+                      {t.loggingIn}
                     </>
                   ) : (
                     <>
                       <Shield className="mr-3 h-5 w-5" />
-                      Se connecter
+                      {t.login}
                     </>
                   )}
                 </div>
@@ -340,30 +444,30 @@ export default function LoginPage() {
             <div className="mt-8 p-6 bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/50 space-y-4">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <h3 className="text-sm font-semibold text-slate-200">Comptes de démonstration</h3>
+                <h3 className="text-sm font-semibold text-slate-200">{t.demoAccounts}</h3>
               </div>
 
               <div className="grid gap-3">
                 <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-blue-500/30 transition-all duration-300 group">
                   <div>
-                    <div className="text-sm font-medium text-blue-300 group-hover:text-blue-200">Admin</div>
-                    <div className="text-xs text-slate-400">admin / admin123</div>
+                    <div className="text-sm font-medium text-blue-300 group-hover:text-blue-200">{t.admin}</div>
+                    <div className="text-xs text-slate-400">{t.adminCreds}</div>
                   </div>
                   <Shield className="w-4 h-4 text-blue-400 opacity-50 group-hover:opacity-100 transition-all" />
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-purple-500/30 transition-all duration-300 group">
                   <div>
-                    <div className="text-sm font-medium text-purple-300 group-hover:text-purple-200">Manager</div>
-                    <div className="text-xs text-slate-400">manager1 / manager123</div>
+                    <div className="text-sm font-medium text-purple-300 group-hover:text-purple-200">{t.manager}</div>
+                    <div className="text-xs text-slate-400">{t.managerCreds}</div>
                   </div>
                   <Star className="w-4 h-4 text-purple-400 opacity-50 group-hover:opacity-100 transition-all" />
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-green-500/30 transition-all duration-300 group">
                   <div>
-                    <div className="text-sm font-medium text-green-300 group-hover:text-green-200">Employé</div>
-                    <div className="text-xs text-slate-400">jean.dupont / employee123</div>
+                    <div className="text-sm font-medium text-green-300 group-hover:text-green-200">{t.employee}</div>
+                    <div className="text-xs text-slate-400">{t.employeeCreds}</div>
                   </div>
                   <Zap className="w-4 h-4 text-green-400 opacity-50 group-hover:opacity-100 transition-all" />
                 </div>
@@ -373,7 +477,7 @@ export default function LoginPage() {
             {/* Footer info */}
             <div className="text-center pt-4">
               <div className="text-xs text-slate-500">
-                Sécurisé par Red Castle Technology
+                {t.securedBy}
               </div>
             </div>
           </CardContent>

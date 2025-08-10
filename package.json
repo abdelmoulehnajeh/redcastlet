@@ -70,6 +70,7 @@
     "recharts": "latest",
     "sonner": "latest",
     "subscriptions-transport-ws": "latest",
+    "sweetalert2": "^11.22.3",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "typescript-eslint": "latest",

@@ -264,7 +264,7 @@ export default function ManagerContractsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="salary" className="text-white">Salaire (€)</Label>
+                      <Label htmlFor="salary" className="text-white">Salaire (DT)</Label>
                       <Input
                         id="salary"
                         type="number"
@@ -334,7 +334,7 @@ export default function ManagerContractsPage() {
               <DollarSign className="h-4 w-4 text-blue-200" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{totalSalaries.toLocaleString()}€</div>
+              <div className="text-2xl font-bold text-white">{totalSalaries.toLocaleString()}DT</div>
               <p className="text-xs text-blue-200">Total mensuel</p>
             </CardContent>
           </Card>
@@ -426,7 +426,7 @@ export default function ManagerContractsPage() {
                     <TableCell className="text-blue-200">
                       {contract.end_date ? new Date(contract.end_date).toLocaleDateString("fr-FR") : "Indéterminée"}
                     </TableCell>
-                    <TableCell className="text-blue-200">{contract.salary.toLocaleString()}€</TableCell>
+                    <TableCell className="text-blue-200">{contract.salary.toLocaleString()}DT</TableCell>
                     <TableCell className="text-blue-200">{contract.tenu_count}</TableCell>
                     <TableCell>{getStatusBadge(contract.status)}</TableCell>
                     <TableCell>

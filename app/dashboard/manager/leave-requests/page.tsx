@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useQuery, useMutation } from "@apollo/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,8 +20,183 @@ import { Label } from "@/components/ui/label"
 import { Calendar, Search, Check, X, Clock, AlertCircle } from "lucide-react"
 import { GET_LEAVE_REQUESTS, APPROVE_LEAVE_REQUEST } from "@/lib/graphql-queries"
 import { useToast } from "@/hooks/use-toast"
+import { useLang, type Lang } from "@/lib/i18n"
+
+type Dict = {
+  headerTitle: string
+  headerSubtitle: string
+  pendingCount: (n: number) => string
+
+  statPending: string
+  statApproved: string
+  statRejected: string
+
+  searchPlaceholder: string
+  filterStatus: string
+  filterType: string
+  all: string
+  statusPending: string
+  statusApproved: string
+  statusRejected: string
+
+  typeVacation: string
+  typeSick: string
+  typePersonal: string
+  typeMaternity: string
+
+  startDate: string
+  endDate: string
+  duration: string
+  requestedOn: string
+  reason: string
+  days: (n: number) => string
+
+  btnApprove: string
+  btnReject: string
+  labelApprovedBy: (name: string, date: string, approved: boolean) => string
+
+  emptyTitle: string
+  emptyFiltered: string
+  emptyAll: string
+
+  dialogTitleApprove: string
+  dialogTitleReject: string
+  dialogFor: (first: string, last: string, from: string, to: string) => string
+  dialogComments: string
+  dialogCommentsOpt: string
+  dialogCommentsReq: string
+  dialogCancel: string
+
+  toastProcessedTitle: string
+  toastProcessedDesc: (approved: boolean) => string
+  toastErrorTitle: string
+  toastErrorDesc: string
+
+  loadingTitle: string
+  loadingSubtitle: string
+  errorLoad: string
+  retry: string
+}
+
+const translations: Record<Lang, Dict> = {
+  fr: {
+    headerTitle: "Demandes de Congé",
+    headerSubtitle: "Gérez les demandes de congé de votre équipe",
+    pendingCount: (n) => `${n} en attente`,
+
+    statPending: "En attente",
+    statApproved: "Approuvées",
+    statRejected: "Rejetées",
+
+    searchPlaceholder: "Rechercher par employé ou raison...",
+    filterStatus: "Statut",
+    filterType: "Type",
+    all: "Tous",
+    statusPending: "En attente",
+    statusApproved: "Approuvé",
+    statusRejected: "Rejeté",
+
+    typeVacation: "Vacances",
+    typeSick: "Maladie",
+    typePersonal: "Personnel",
+    typeMaternity: "Maternité",
+
+    startDate: "Date de début",
+    endDate: "Date de fin",
+    duration: "Durée",
+    requestedOn: "Demandé le",
+    reason: "Raison",
+    days: (n) => `${n} jour(s)`,
+
+    btnApprove: "Approuver",
+    btnReject: "Rejeter",
+    labelApprovedBy: (name, date, approved) => `${approved ? "Approuvé" : "Rejeté"} par ${name} le ${date}`,
+
+    emptyTitle: "Aucune demande trouvée",
+    emptyFiltered: "Aucune demande ne correspond à vos critères de recherche.",
+    emptyAll: "Aucune demande de congé pour le moment.",
+
+    dialogTitleApprove: "Approuver la demande",
+    dialogTitleReject: "Rejeter la demande",
+    dialogFor: (first, last, from, to) => `Demande de ${first} ${last} du ${from} au ${to}`,
+    dialogComments: "Commentaires",
+    dialogCommentsOpt: "(optionnel)",
+    dialogCommentsReq: "(obligatoire)",
+    dialogCancel: "Annuler",
+
+    toastProcessedTitle: "Demande traitée",
+    toastProcessedDesc: (approved) => `La demande de congé a été ${approved ? "approuvée" : "rejetée"}.`,
+    toastErrorTitle: "Erreur",
+    toastErrorDesc: "Erreur lors du traitement de la demande.",
+
+    loadingTitle: "Demandes de Congé",
+    loadingSubtitle: "Chargement des demandes...",
+    errorLoad: "Erreur lors du chargement des demandes",
+    retry: "Réessayer",
+  },
+  ar: {
+    headerTitle: "طلبات الإجازة",
+    headerSubtitle: "إدارة طلبات الإجازة لفريقك",
+    pendingCount: (n) => `${n} قيد الانتظار`,
+
+    statPending: "قيد الانتظار",
+    statApproved: "مقبولة",
+    statRejected: "مرفوضة",
+
+    searchPlaceholder: "ابحث حسب الموظف أو السبب...",
+    filterStatus: "الحالة",
+    filterType: "النوع",
+    all: "الكل",
+    statusPending: "قيد الانتظار",
+    statusApproved: "مقبول",
+    statusRejected: "مرفوض",
+
+    typeVacation: "إجازة",
+    typeSick: "مرضية",
+    typePersonal: "شخصية",
+    typeMaternity: "أمومة",
+
+    startDate: "تاريخ البدء",
+    endDate: "تاريخ الانتهاء",
+    duration: "المدة",
+    requestedOn: "تم الطلب في",
+    reason: "السبب",
+    days: (n) => `${n} يوم`,
+
+    btnApprove: "قبول",
+    btnReject: "رفض",
+    labelApprovedBy: (name, date, approved) => `${approved ? "قُبلت" : "رُفضت"} بواسطة ${name} في ${date}`,
+
+    emptyTitle: "لا توجد طلبات",
+    emptyFiltered: "لا توجد طلبات تطابق معايير البحث.",
+    emptyAll: "لا توجد طلبات إجازة حاليًا.",
+
+    dialogTitleApprove: "قبول الطلب",
+    dialogTitleReject: "رفض الطلب",
+    dialogFor: (first, last, from, to) => `طلب ${first} ${last} من ${from} إلى ${to}`,
+    dialogComments: "التعليقات",
+    dialogCommentsOpt: "(اختياري)",
+    dialogCommentsReq: "(إلزامي)",
+    dialogCancel: "إلغاء",
+
+    toastProcessedTitle: "تم معالجة الطلب",
+    toastProcessedDesc: (approved) => `تم ${approved ? "قبول" : "رفض"} طلب الإجازة.`,
+    toastErrorTitle: "خطأ",
+    toastErrorDesc: "حدث خطأ أثناء معالجة الطلب.",
+
+    loadingTitle: "طلبات الإجازة",
+    loadingSubtitle: "جارٍ تحميل الطلبات...",
+    errorLoad: "حدث خطأ أثناء تحميل الطلبات",
+    retry: "إعادة المحاولة",
+  },
+}
 
 export default function ManagerLeaveRequestsPage() {
+  const { lang, formatDate } = useLang()
+  const t = translations[lang]
+  const align = lang === "ar" ? "text-right" : "text-left"
+  const { toast } = useToast()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterType, setFilterType] = useState("all")
@@ -29,29 +204,30 @@ export default function ManagerLeaveRequestsPage() {
   const [showApprovalDialog, setShowApprovalDialog] = useState(false)
   const [approvalComments, setApprovalComments] = useState("")
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject">("approve")
-  const { toast } = useToast()
 
   const { data, loading, error, refetch } = useQuery(GET_LEAVE_REQUESTS)
   const [approveLeaveRequest] = useMutation(APPROVE_LEAVE_REQUEST)
 
   const leaveRequests = data?.leaveRequests || []
 
-  const filteredRequests = leaveRequests.filter((request: any) => {
-    const employeeName = `${request.employee.profile?.first_name} ${request.employee.profile?.last_name}`.toLowerCase()
-    const matchesSearch =
-      employeeName.includes(searchTerm.toLowerCase()) ||
-      request.employee.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.reason.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredRequests = useMemo(() => {
+    return leaveRequests.filter((request: any) => {
+      const first = request.employee.profile?.first_name || ""
+      const last = request.employee.profile?.last_name || ""
+      const employeeName = `${first} ${last}`.toLowerCase()
+      const username = (request.employee.username || "").toLowerCase()
+      const reason = (request.reason || "").toLowerCase()
+      const s = searchTerm.toLowerCase()
 
-    const matchesStatus = filterStatus === "all" || request.status === filterStatus
-    const matchesType = filterType === "all" || request.type === filterType
-
-    return matchesSearch && matchesStatus && matchesType
-  })
+      const matchesSearch = employeeName.includes(s) || username.includes(s) || reason.includes(s)
+      const matchesStatus = filterStatus === "all" || request.status === filterStatus
+      const matchesType = filterType === "all" || request.type === filterType
+      return matchesSearch && matchesStatus && matchesType
+    })
+  }, [leaveRequests, searchTerm, filterStatus, filterType])
 
   const handleApproval = async () => {
     if (!selectedRequest) return
-
     try {
       await approveLeaveRequest({
         variables: {
@@ -60,20 +236,18 @@ export default function ManagerLeaveRequestsPage() {
           comments: approvalComments,
         },
       })
-
       toast({
-        title: "Demande traitée",
-        description: `La demande de congé a été ${approvalAction === "approve" ? "approuvée" : "rejetée"}.`,
+        title: t.toastProcessedTitle,
+        description: t.toastProcessedDesc(approvalAction === "approve"),
       })
-
       setShowApprovalDialog(false)
       setSelectedRequest(null)
       setApprovalComments("")
       refetch()
-    } catch (error) {
+    } catch {
       toast({
-        title: "Erreur",
-        description: "Erreur lors du traitement de la demande.",
+        title: t.toastErrorTitle,
+        description: t.toastErrorDesc,
         variant: "destructive",
       })
     }
@@ -85,32 +259,37 @@ export default function ManagerLeaveRequestsPage() {
     setShowApprovalDialog(true)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const longDate = (dateString: string) => {
+    const d = new Date(dateString)
+    return formatDate(d, { year: "numeric", month: "long", day: "numeric" })
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
         return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            En attente
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800" dir="auto">
+            {t.statusPending}
           </Badge>
         )
       case "approved":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            Approuvé
+          <Badge variant="default" className="bg-green-100 text-green-800" dir="auto">
+            {t.statusApproved}
           </Badge>
         )
       case "rejected":
-        return <Badge variant="destructive">Rejeté</Badge>
+        return (
+          <Badge variant="destructive" dir="auto">
+            {t.statusRejected}
+          </Badge>
+        )
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return (
+          <Badge variant="outline" dir="auto">
+            {status}
+          </Badge>
+        )
     }
   }
 
@@ -118,30 +297,34 @@ export default function ManagerLeaveRequestsPage() {
     switch (type) {
       case "vacation":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800">
-            Vacances
+          <Badge variant="outline" className="bg-blue-100 text-blue-800" dir="auto">
+            {t.typeVacation}
           </Badge>
         )
       case "sick":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800">
-            Maladie
+          <Badge variant="outline" className="bg-red-100 text-red-800" dir="auto">
+            {t.typeSick}
           </Badge>
         )
       case "personal":
         return (
-          <Badge variant="outline" className="bg-purple-100 text-purple-800">
-            Personnel
+          <Badge variant="outline" className="bg-purple-100 text-purple-800" dir="auto">
+            {t.typePersonal}
           </Badge>
         )
       case "maternity":
         return (
-          <Badge variant="outline" className="bg-pink-100 text-pink-800">
-            Maternité
+          <Badge variant="outline" className="bg-pink-100 text-pink-800" dir="auto">
+            {t.typeMaternity}
           </Badge>
         )
       default:
-        return <Badge variant="outline">{type}</Badge>
+        return (
+          <Badge variant="outline" dir="auto">
+            {type}
+          </Badge>
+        )
     }
   }
 
@@ -158,11 +341,14 @@ export default function ManagerLeaveRequestsPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Demandes de Congé</h1>
-            <p className="text-muted-foreground">Gérez les demandes de congé de votre équipe</p>
+            <h1 className="text-2xl sm:text-3xl font-bold" dir="auto">
+              {t.loadingTitle}
+            </h1>
+            <p className="text-muted-foreground" dir="auto">
+              {t.loadingSubtitle}
+            </p>
           </div>
         </div>
-
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -192,8 +378,10 @@ export default function ManagerLeaveRequestsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Erreur lors du chargement des demandes</p>
-          <Button onClick={() => refetch()}>Réessayer</Button>
+          <p className="text-red-600 mb-4" dir="auto">
+            {t.errorLoad}
+          </p>
+          <Button onClick={() => refetch()}>{t.retry}</Button>
         </div>
       </div>
     )
@@ -208,18 +396,23 @@ export default function ManagerLeaveRequestsPage() {
       {/* Animated background */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="w-full h-full animate-float bg-gradient-to-br from-[#23243a]/60 via-[#2d2e4a]/60 to-[#1a1b2e]/80 opacity-90 blur-2xl" />
-        {/* Optionally add particles or animated SVGs here for more effect */}
       </div>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">Demandes de Congé</h1>
-          <p className="text-muted-foreground">Gérez les demandes de congé de votre équipe</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow" dir="auto">
+            {t.headerTitle}
+          </h1>
+          <p className="text-muted-foreground" dir="auto">
+            {t.headerSubtitle}
+          </p>
         </div>
         <div className="flex items-center gap-2 bg-glass-card px-4 py-2 rounded-xl shadow border border-white/10">
           <AlertCircle className="w-5 h-5 text-orange-400" />
-          <span className="text-sm font-medium text-orange-200">{pendingRequests} en attente</span>
+          <span className="text-sm font-medium text-orange-200" dir="auto">
+            {t.pendingCount(pendingRequests)}
+          </span>
         </div>
       </div>
 
@@ -231,7 +424,9 @@ export default function ManagerLeaveRequestsPage() {
               <Clock className="w-5 h-5 text-yellow-400" />
               <div>
                 <p className="text-2xl font-bold text-yellow-100">{pendingRequests}</p>
-                <p className="text-sm text-yellow-200/80">En attente</p>
+                <p className="text-sm text-yellow-200/80" dir="auto">
+                  {t.statPending}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -242,7 +437,9 @@ export default function ManagerLeaveRequestsPage() {
               <Check className="w-5 h-5 text-green-400" />
               <div>
                 <p className="text-2xl font-bold text-green-100">{approvedRequests}</p>
-                <p className="text-sm text-green-200/80">Approuvées</p>
+                <p className="text-sm text-green-200/80" dir="auto">
+                  {t.statApproved}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -253,7 +450,9 @@ export default function ManagerLeaveRequestsPage() {
               <X className="w-5 h-5 text-red-400" />
               <div>
                 <p className="text-2xl font-bold text-red-100">{rejectedRequests}</p>
-                <p className="text-sm text-red-200/80">Rejetées</p>
+                <p className="text-sm text-red-200/80" dir="auto">
+                  {t.statRejected}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -267,7 +466,7 @@ export default function ManagerLeaveRequestsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Rechercher par employé ou raison..."
+                placeholder={t.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-glass-card text-white placeholder:text-gray-300 border-white/10 focus:ring-accent/40"
@@ -276,25 +475,26 @@ export default function ManagerLeaveRequestsPage() {
             <div className="flex gap-2">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-32 glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Statut" />
+                  <SelectValue placeholder={t.filterStatus} />
                 </SelectTrigger>
                 <SelectContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
-                  <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="approved">Approuvé</SelectItem>
-                  <SelectItem value="rejected">Rejeté</SelectItem>
+                  <SelectItem value="all">{t.all}</SelectItem>
+                  <SelectItem value="pending">{t.statusPending}</SelectItem>
+                  <SelectItem value="approved">{t.statusApproved}</SelectItem>
+                  <SelectItem value="rejected">{t.statusRejected}</SelectItem>
                 </SelectContent>
               </Select>
+
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="w-32 glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t.filterType} />
                 </SelectTrigger>
                 <SelectContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white">
-                  <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="vacation">Vacances</SelectItem>
-                  <SelectItem value="sick">Maladie</SelectItem>
-                  <SelectItem value="personal">Personnel</SelectItem>
-                  <SelectItem value="maternity">Maternité</SelectItem>
+                  <SelectItem value="all">{t.all}</SelectItem>
+                  <SelectItem value="vacation">{t.typeVacation}</SelectItem>
+                  <SelectItem value="sick">{t.typeSick}</SelectItem>
+                  <SelectItem value="personal">{t.typePersonal}</SelectItem>
+                  <SelectItem value="maternity">{t.typeMaternity}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -305,7 +505,10 @@ export default function ManagerLeaveRequestsPage() {
       {/* Leave Requests List */}
       <div className="space-y-4">
         {filteredRequests.map((request: any) => (
-          <Card key={request.id} className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 hover:shadow-xl transition-shadow">
+          <Card
+            key={request.id}
+            className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 hover:shadow-xl transition-shadow"
+          >
             <CardHeader>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -313,7 +516,7 @@ export default function ManagerLeaveRequestsPage() {
                     {request.employee.profile?.first_name?.[0] || request.employee.username[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg truncate text-white drop-shadow">
+                    <CardTitle className="text-lg truncate text-white drop-shadow" dir="auto">
                       {request.employee.profile?.first_name} {request.employee.profile?.last_name}
                     </CardTitle>
                     <CardDescription className="truncate text-gray-300">@{request.employee.username}</CardDescription>
@@ -328,28 +531,42 @@ export default function ManagerLeaveRequestsPage() {
 
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Date de début</p>
-                  <p className="font-medium text-white">{formatDate(request.start_date)}</p>
+                <div className={align}>
+                  <p className="text-muted-foreground" dir="auto">
+                    {t.startDate}
+                  </p>
+                  <p className="font-medium text-white">{longDate(request.start_date)}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Date de fin</p>
-                  <p className="font-medium text-white">{formatDate(request.end_date)}</p>
+                <div className={align}>
+                  <p className="text-muted-foreground" dir="auto">
+                    {t.endDate}
+                  </p>
+                  <p className="font-medium text-white">{longDate(request.end_date)}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Durée</p>
-                  <p className="font-medium text-white">{calculateDays(request.start_date, request.end_date)} jour(s)</p>
+                <div className={align}>
+                  <p className="text-muted-foreground" dir="auto">
+                    {t.duration}
+                  </p>
+                  <p className="font-medium text-white">
+                    {t.days(calculateDays(request.start_date, request.end_date))}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Demandé le</p>
-                  <p className="font-medium text-white">{formatDate(request.created_at)}</p>
+                <div className={align}>
+                  <p className="text-muted-foreground" dir="auto">
+                    {t.requestedOn}
+                  </p>
+                  <p className="font-medium text-white">{longDate(request.created_at)}</p>
                 </div>
               </div>
 
               {request.reason && (
                 <div>
-                  <p className="text-muted-foreground text-sm mb-1">Raison</p>
-                  <p className="text-sm bg-glass-card/80 p-3 rounded-lg text-white border border-white/10">{request.reason}</p>
+                  <p className="text-muted-foreground text-sm mb-1" dir="auto">
+                    {t.reason}
+                  </p>
+                  <p className="text-sm bg-glass-card/80 p-3 rounded-lg text-white border border-white/10" dir="auto">
+                    {request.reason}
+                  </p>
                 </div>
               )}
 
@@ -362,7 +579,7 @@ export default function ManagerLeaveRequestsPage() {
                     className="text-red-400 hover:text-red-500 border-red-400/40 bg-transparent hover:bg-red-900/10"
                   >
                     <X className="w-4 h-4 mr-1" />
-                    Rejeter
+                    {t.btnReject}
                   </Button>
                   <Button
                     size="sm"
@@ -370,15 +587,18 @@ export default function ManagerLeaveRequestsPage() {
                     className="bg-green-600/90 hover:bg-green-700/90 text-white shadow"
                   >
                     <Check className="w-4 h-4 mr-1" />
-                    Approuver
+                    {t.btnApprove}
                   </Button>
                 </div>
               )}
 
               {request.status !== "pending" && request.approved_by && (
-                <div className="text-sm text-muted-foreground pt-2 border-t border-white/10">
-                  {request.status === "approved" ? "Approuvé" : "Rejeté"} par {request.approved_by.username} le{" "}
-                  {formatDate(request.approved_at)}
+                <div className="text-sm text-muted-foreground pt-2 border-t border-white/10" dir="auto">
+                  {t.labelApprovedBy(
+                    request.approved_by.username,
+                    longDate(request.approved_at),
+                    request.status === "approved",
+                  )}
                 </div>
               )}
             </CardContent>
@@ -390,11 +610,11 @@ export default function ManagerLeaveRequestsPage() {
         <Card className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10">
           <CardContent className="text-center py-12">
             <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2 text-white">Aucune demande trouvée</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || filterStatus !== "all" || filterType !== "all"
-                ? "Aucune demande ne correspond à vos critères de recherche."
-                : "Aucune demande de congé pour le moment."}
+            <h3 className="text-lg font-medium mb-2 text-white" dir="auto">
+              {t.emptyTitle}
+            </h3>
+            <p className="text-muted-foreground" dir="auto">
+              {searchTerm || filterStatus !== "all" || filterType !== "all" ? t.emptyFiltered : t.emptyAll}
             </p>
           </CardContent>
         </Card>
@@ -404,25 +624,28 @@ export default function ManagerLeaveRequestsPage() {
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
         <DialogContent className="glass-card bg-gradient-to-br from-white/10 to-white/5 border-white/10 sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="text-white drop-shadow">{approvalAction === "approve" ? "Approuver" : "Rejeter"} la demande</DialogTitle>
-            <DialogDescription className="text-gray-200">
-              {selectedRequest && (
-                <>
-                  Demande de {selectedRequest.employee.profile?.first_name}{" "}
-                  {selectedRequest.employee.profile?.last_name}
-                  du {formatDate(selectedRequest.start_date)} au {formatDate(selectedRequest.end_date)}
-                </>
-              )}
+            <DialogTitle className="text-white drop-shadow" dir="auto">
+              {approvalAction === "approve" ? t.dialogTitleApprove : t.dialogTitleReject}
+            </DialogTitle>
+            <DialogDescription className="text-gray-200" dir="auto">
+              {selectedRequest &&
+                t.dialogFor(
+                  selectedRequest.employee.profile?.first_name || "",
+                  selectedRequest.employee.profile?.last_name || "",
+                  longDate(selectedRequest.start_date),
+                  longDate(selectedRequest.end_date),
+                )}
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="comments" className="text-white">
-                Commentaires {approvalAction === "reject" ? "(obligatoire)" : "(optionnel)"}
+              <Label htmlFor="comments" className="text-white" dir="auto">
+                {t.dialogComments} {approvalAction === "reject" ? t.dialogCommentsReq : t.dialogCommentsOpt}
               </Label>
               <Textarea
                 id="comments"
-                placeholder={approvalAction === "approve" ? "Commentaires sur l'approbation..." : "Raison du rejet..."}
+                placeholder={approvalAction === "approve" ? `${t.dialogComments}...` : `${t.dialogComments}...`}
                 value={approvalComments}
                 onChange={(e) => setApprovalComments(e.target.value)}
                 rows={3}
@@ -430,9 +653,14 @@ export default function ManagerLeaveRequestsPage() {
               />
             </div>
           </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApprovalDialog(false)} className="text-white border-white/20">
-              Annuler
+            <Button
+              variant="outline"
+              onClick={() => setShowApprovalDialog(false)}
+              className="text-white border-white/20"
+            >
+              {t.dialogCancel}
             </Button>
             <Button
               onClick={handleApproval}
@@ -445,13 +673,11 @@ export default function ManagerLeaveRequestsPage() {
             >
               {approvalAction === "approve" ? (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Approuver
+                  <Check className="w-4 h-4 mr-2" /> {t.btnApprove}
                 </>
               ) : (
                 <>
-                  <X className="w-4 h-4 mr-2" />
-                  Rejeter
+                  <X className="w-4 h-4 mr-2" /> {t.btnReject}
                 </>
               )}
             </Button>

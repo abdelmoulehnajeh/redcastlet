@@ -1,3 +1,12 @@
+-- Table: recent_activities
+CREATE TABLE IF NOT EXISTS recent_activities (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  type VARCHAR(50) NOT NULL, 
+  urgent BOOLEAN DEFAULT false,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 -- Table: public.time_entries
 
 CREATE TABLE IF NOT EXISTS public.time_entries (

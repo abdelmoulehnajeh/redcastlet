@@ -1,249 +1,344 @@
 "use client"
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Calendar } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+
+import { useMemo } from "react"
+import { Calendar, Clock } from 'lucide-react'
 import { useQuery } from "@apollo/client"
+import { useAuth } from "@/lib/auth-context"
 import { GET_WORK_SCHEDULES } from "@/lib/graphql-queries"
 
-export default function JournalPage() {
-  const { user } = useAuth()
-  const [currentDate, setCurrentDate] = useState(new Date())
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useLang, type Lang } from "@/lib/i18n"
 
-  const { data: scheduleData } = useQuery(GET_WORK_SCHEDULES, {
+type Dict = {
+  headerTitle: string
+  headerSubtitle: string
+  tableTitle: string
+  tableSubtitle: string
+  thDay: string
+  thType: string
+  thStart: string
+  thEnd: string
+  thStatus: string
+  noSessions: string
+  worked: string
+  off: string
+}
+
+const translations: Record<Lang, Dict> = {
+  fr: {
+    headerTitle: "Journal de Travail",
+    headerSubtitle: "Consultez votre planning et historique",
+    tableTitle: "Mes horaires de travail",
+    tableSubtitle: "Liste de vos sessions de travail",
+    thDay: "Jour",
+    thType: "Type",
+    thStart: "Début",
+    thEnd: "Fin",
+    thStatus: "Statut",
+    noSessions: "Aucune session trouvée.",
+    worked: "Travaillé",
+    off: "Repos",
+  },
+  ar: {
+    headerTitle: "سجل العمل",
+    headerSubtitle: "اطّلع على جدولك وسجلّك",
+    tableTitle: "ساعات عملي",
+    tableSubtitle: "قائمة جلسات عملك",
+    thDay: "اليوم",
+    thType: "النوع",
+    thStart: "البدء",
+    thEnd: "النهاية",
+    thStatus: "الحالة",
+    noSessions: "لا توجد جلسات.",
+    worked: "تم العمل",
+    off: "راحة",
+  },
+}
+
+function parseAnyDate(input: string | number | Date): Date | null {
+  if (input instanceof Date) return isNaN(input.getTime()) ? null : input
+  if (typeof input === "number") {
+    const d = new Date(input)
+    return isNaN(d.getTime()) ? null : d
+  }
+  if (typeof input === "string") {
+    const s = input.trim()
+    // numeric timestamp string
+    if (/^\d+$/.test(s)) {
+      const d = new Date(Number(s))
+      return isNaN(d.getTime()) ? null : d
+    }
+    // ISO-like first
+    const iso = Date.parse(s)
+    if (!isNaN(iso)) {
+      const d = new Date(iso)
+      return isNaN(d.getTime()) ? null : d
+    }
+    // yyyy-mm-dd fallback
+    const parts = s.replace(/['"\s]/g, "").split("-")
+    if (parts.length === 3 && parts[0].length === 4) {
+      const y = Number(parts[0])
+      const m = Number(parts[1]) - 1
+      const da = Number(parts[2])
+      const d = new Date(y, m, da)
+      return isNaN(d.getTime()) ? null : d
+    }
+  }
+  return null
+}
+
+function formatISOInTunis(d: Date) {
+  // Format YYYY-MM-DD using Africa/Tunis
+  const fmt = new Intl.DateTimeFormat("fr-TN", {
+    timeZone: "Africa/Tunis",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+  const parts = fmt.formatToParts(d)
+  const y = parts.find(p => p.type === "year")?.value ?? "0000"
+  const m = parts.find(p => p.type === "month")?.value ?? "01"
+  const da = parts.find(p => p.type === "day")?.value ?? "01"
+  return `${y}-${m}-${da}`
+}
+
+function shiftLabel(value: string, lang: Lang) {
+  if (lang === "ar") {
+    switch (value) {
+      case "Matin":
+        return "صباحي"
+      case "Soirée":
+        return "مسائي"
+      case "Doublage":
+        return "مزدوج"
+      case "Repos":
+        return "راحة"
+      default:
+        return value || "—"
+    }
+  }
+  // fr / default
+  return value || "—"
+}
+
+export default function JournalPage() {
+  // i18n and formatting
+  const { lang, formatDate } = useLang()
+  const t = translations[lang]
+  const align = lang === "ar" ? "text-right" : "text-left"
+
+  const { user } = useAuth()
+  const { data: scheduleData, loading } = useQuery(GET_WORK_SCHEDULES, {
     variables: { employee_id: user?.employee_id },
     skip: !user?.employee_id,
+    fetchPolicy: "cache-and-network",
   })
 
-  const schedules = scheduleData?.workSchedules || []
+  const schedules = Array.isArray(scheduleData?.workSchedules) ? scheduleData.workSchedules : []
 
-  // Sort schedules to start from Monday (1) to Sunday (0)
-  const sortedSchedules = [...schedules].sort((a, b) => {
-    const getDateFromTimestamp = (timestamp: string | number) => {
-      if (typeof timestamp === 'string' && /^\d+$/.test(timestamp)) {
-        return new Date(parseInt(timestamp));
-      }
-      return new Date(timestamp);
-    };
-
-    const dateA = getDateFromTimestamp(a.date);
-    const dateB = getDateFromTimestamp(b.date);
-    
-    // Convert Sunday (0) to 7 to make Monday (1) the first day
-    const dayA = dateA.getDay() === 0 ? 7 : dateA.getDay();
-    const dayB = dateB.getDay() === 0 ? 7 : dateB.getDay();
-    
-    // First sort by day of week (Monday first)
-    if (dayA !== dayB) {
-      return dayA - dayB;
+  const sortedSchedules = useMemo(() => {
+    const items = [...schedules]
+    const sortKey = (raw: string | number) => {
+      const d = parseAnyDate(raw)
+      if (!d) return { dow: 8, ts: Number.MAX_SAFE_INTEGER } // push invalid to end
+      const dow = d.getDay() === 0 ? 7 : d.getDay() // Mon=1..Sun=7
+      return { dow, ts: d.getTime() }
     }
-    
-    // Then sort by actual date
-    return dateA.getTime() - dateB.getTime();
-  });
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("fr-FR", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    return items.sort((a: any, b: any) => {
+      const A = sortKey(a.date)
+      const B = sortKey(b.date)
+      if (A.dow !== B.dow) return A.dow - B.dow
+      return A.ts - B.ts
     })
-  }
+  }, [schedules])
 
-  const getMonthName = (date: Date) => {
-    return date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
-  }
-
-  const navigateMonth = (direction: "prev" | "next") => {
-    const newDate = new Date(currentDate)
-    if (direction === "prev") {
-      newDate.setMonth(newDate.getMonth() - 1)
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1)
-    }
-    setCurrentDate(newDate)
-  }
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
-
-    const days = []
-
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
-    }
-
-    // Add all days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day)
-    }
-
-    return days
-  }
-
-  const getScheduleForDate = (day: number) => {
-    if (!day) return null
-    const dateString = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split("T")[0]
-    return schedules.find((schedule: any) => schedule.date === dateString)
-  }
-
-  const getScheduleStats = () => {
-    const currentMonth = currentDate.getMonth()
-    const currentYear = currentDate.getFullYear()
-
-    const monthSchedules = schedules.filter((schedule: any) => {
-      const scheduleDate = new Date(schedule.date)
-      return scheduleDate.getMonth() === currentMonth && scheduleDate.getFullYear() === currentYear
-    })
-
-    const workingDays = monthSchedules.filter((s: any) => s.is_working).length
-    const totalHours = monthSchedules.reduce((sum: number, schedule: any) => {
-      if (schedule.start_time && schedule.end_time) {
-        const start = new Date(`2024-01-01 ${schedule.start_time}`)
-        const end = new Date(`2024-01-01 ${schedule.end_time}`)
-        const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-        return sum + diff
-      }
-      return sum
-    }, 0)
-
-    return { workingDays, totalHours: Math.round(totalHours) }
+  const formatDayLabel = (raw: string | number) => {
+    const d = parseAnyDate(raw)
+    if (!d) return "—"
+    const dayName = formatDate(d, { weekday: "long" })
+    const iso = formatISOInTunis(d)
+    // Example: الاثنين 2025-07-21 (Arabic) or lundi 2025-07-21 (French)
+    return `${dayName} ${iso}`
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="bg-gradient-castle rounded-2xl p-6 text-white shadow-elegant">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <Calendar className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-1">Journal de Travail</h1>
-            <p className="text-white/90">Consultez votre planning et historique</p>
+    <div className="relative" dir="ltr">
+      {/* Decorative background (subtle) */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-purple-900/30 via-slate-900/30 to-slate-950" />
+
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="rounded-2xl border bg-gradient-to-br from-slate-900/80 to-slate-800/70 border-slate-700 p-4 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+              <Calendar className="size-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1
+                className="text-lg sm:text-2xl font-semibold tracking-tight text-white"
+                dir="auto"
+              >
+                {t.headerTitle}
+              </h1>
+              <p className="text-xs sm:text-sm text-white/80" dir="auto">
+                {t.headerSubtitle}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Tableau des horaires de travail */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">Mes horaires de travail</CardTitle>
-          <CardDescription>Liste de vos sessions de travail</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Jour</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Début</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Fin</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {sortedSchedules.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground">Aucune session trouvée.</td>
-                  </tr>
+        {/* Content */}
+        <Card className="rounded-2xl border border-slate-700 bg-slate-900/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-white text-base sm:text-lg" dir="auto">
+              {t.tableTitle}
+            </CardTitle>
+            <CardDescription className="text-slate-300" dir="auto">
+              {t.tableSubtitle}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Desktop/tablet: table */}
+            <div className="hidden md:block">
+              <div className="relative overflow-x-auto rounded-xl">
+                <Table className="min-w-[860px]">
+                  <TableHeader>
+                    <TableRow className="bg-slate-800/70 border-slate-700">
+                      <TableHead className={`${align} text-slate-100`}>{t.thDay}</TableHead>
+                      <TableHead className={`${align} text-slate-100`}>{t.thType}</TableHead>
+                      <TableHead className={`${align} text-slate-100`}>{t.thStart}</TableHead>
+                      <TableHead className={`${align} text-slate-100`}>{t.thEnd}</TableHead>
+                      <TableHead className={`${align} text-slate-100`}>{t.thStatus}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <TableRow key={`skeleton-${i}`} className="border-slate-800/70">
+                          <TableCell colSpan={5}>
+                            <div className="h-5 w-full animate-pulse rounded bg-slate-700/50" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : sortedSchedules.length === 0 ? (
+                      <TableRow className="border-slate-800/70">
+                        <TableCell colSpan={5} className="text-center text-slate-400 py-6" dir="auto">
+                          {t.noSessions}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      sortedSchedules.map((schedule: any, idx: number) => {
+                        const isWorking = !!schedule.is_working
+                        const start = schedule?.start_time ? String(schedule.start_time).slice(0, 5) : "—"
+                        const end = schedule?.end_time ? String(schedule.end_time).slice(0, 5) : "—"
+                        const shift = shiftLabel(String(schedule.shift_type ?? ""), lang)
+                        return (
+                          <TableRow
+                            key={schedule.id ?? idx}
+                            className="border-slate-800/70 hover:bg-red-800/40"
+                          >
+                            <TableCell className={`text-white ${align}`} dir="auto">
+                              {formatDayLabel(schedule.date)}
+                            </TableCell>
+                            <TableCell className={`${align}`}>
+                              <Badge
+                                variant={isWorking ? "default" : "secondary"}
+                                className={`px-2 ${isWorking ? "bg-orange-600 text-white" : "bg-red-600"}`}
+                              >
+                                <span dir="auto">{shift}</span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={`text-slate-200 ${align}`}>{start}</TableCell>
+                            <TableCell className={`text-slate-200 ${align}`}>{end}</TableCell>
+                            <TableCell className={`${align}`}>
+                              <div
+                                className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg ${isWorking ? "bg-emerald-950/40" : "bg-red-800/40"
+                                  }`}
+                              >
+                                <Clock
+                                  className={`size-4 ${isWorking ? "text-emerald-400" : "text-slate-300"}`}
+                                />
+                                <span
+                                  className={isWorking ? "text-emerald-200" : "text-slate-200"}
+                                  dir="auto"
+                                >
+                                  {isWorking ? t.worked : t.off}
+                                </span>
+                              </div>
+
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Mobile: card list */}
+            <div className="md:hidden space-y-3">
+              {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                  <div key={`m-skel-${i}`} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                    <div className="h-5 w-2/3 animate-pulse rounded bg-slate-700/50 mb-3" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="h-4 w-full animate-pulse rounded bg-slate-700/40" />
+                      <div className="h-4 w-full animate-pulse rounded bg-slate-700/40" />
+                      <div className="h-4 w-full animate-pulse rounded bg-slate-700/40" />
+                      <div className="h-4 w-full animate-pulse rounded bg-slate-700/40" />
+                    </div>
+                  </div>
+                ))
+                : (sortedSchedules.length === 0 ? (
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 text-center text-slate-400" dir="auto">
+                    {t.noSessions}
+                  </div>
                 ) : (
-                  sortedSchedules.map((schedule: any, idx: number) => (
-                    <tr key={idx} className="hover:bg-accent/50 transition-colors">
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {(() => {
-                          let dateValue = schedule.date;
-                          
-                          if (!dateValue) return "-";
-                          
-                          let d: Date | null = null;
-                          
-                          // Handle timestamp (string of numbers) or regular date
-                          if (typeof dateValue === 'string') {
-                            // Check if it's a timestamp (all digits)
-                            if (/^\d+$/.test(dateValue)) {
-                              // Convert timestamp string to number and create date
-                              const timestamp = parseInt(dateValue);
-                              d = new Date(timestamp);
-                            } else {
-                              // Handle regular date string formats
-                              const cleanDateStr = dateValue.replace(/['"\s]/g, '');
-                              const parts = cleanDateStr.split('-');
-                              if (parts.length === 3 && parts[0].length === 4) {
-                                const year = parseInt(parts[0]);
-                                const month = parseInt(parts[1]) - 1; // Month is 0-indexed
-                                const day = parseInt(parts[2]);
-                                d = new Date(year, month, day);
-                              } else {
-                                d = new Date(cleanDateStr);
-                              }
-                            }
-                          } else if (typeof dateValue === 'number') {
-                            // Handle numeric timestamp
-                            d = new Date(dateValue);
-                          } else {
-                            // Fallback
-                            d = new Date(dateValue);
-                          }
-                          
-                          if (!d || isNaN(d.getTime())) {
-                            return "-";
-                          }
-                          
-                          // French day names with first letter capitalized
-                          const frenchDays = [
-                            "Dimanche",
-                            "Lundi", 
-                            "Mardi",
-                            "Mercredi",
-                            "Jeudi",
-                            "Vendredi",
-                            "Samedi"
-                          ];
-                          
-                          const dayName = frenchDays[d.getDay()];
-                          
-                          // Format the date as YYYY-MM-DD
-                          const year = d.getFullYear();
-                          const month = String(d.getMonth() + 1).padStart(2, '0');
-                          const day = String(d.getDate()).padStart(2, '0');
-                          const formattedDate = `${year}-${month}-${day}`;
-                          
-                          // Return in the exact format requested: Lundi2025-07-21
-                          return `${dayName} ${formattedDate}`;
-                        })()}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <Badge variant={schedule.is_working ? "default" : "secondary"} className="text-xs px-1 py-0">
-                          {schedule.shift_type}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">{schedule.start_time ? schedule.start_time.slice(0,5) : "-"}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">{schedule.end_time ? schedule.end_time.slice(0,5) : "-"}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {schedule.is_working ? (
-                          <span className="text-green-600 font-semibold">Travaillé</span>
-                        ) : (
-                          <span className="text-gray-400">Repos</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                  sortedSchedules.map((schedule: any, idx: number) => {
+                    const isWorking = !!schedule.is_working
+                    const start = schedule?.start_time ? String(schedule.start_time).slice(0, 5) : "—"
+                    const end = schedule?.end_time ? String(schedule.end_time).slice(0, 5) : "—"
+                    const shift = shiftLabel(String(schedule.shift_type ?? ""), lang)
+                    return (
+                      <div
+                        key={schedule.id ?? idx}
+                        className="rounded-xl border border-slate-800 bg-slate-900/60 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="font-medium text-white" dir="auto">
+                            {formatDayLabel(schedule.date)}
+                          </p>
+                          <Badge
+                            variant={isWorking ? "default" : "secondary"}
+                            className={`px-2 ${isWorking ? "bg-blue-600 text-white" : ""}`}
+                          >
+                            <span dir="auto">{shift}</span>
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="text-slate-400" dir="auto">{t.thStart}</div>
+                          <div className="text-slate-200 text-right">{start}</div>
+                          <div className="text-slate-400" dir="auto">{t.thEnd}</div>
+                          <div className="text-slate-200 text-right">{end}</div>
+                          <div className="text-slate-400" dir="auto">{t.thStatus}</div>
+                          <div className="text-slate-200 text-right flex items-center justify-end gap-2">
+                            <Clock className={`size-4 ${isWorking ? "text-emerald-400" : "text-slate-400"}`} />
+                            <span className={isWorking ? "text-emerald-300" : "text-slate-400"} dir="auto">
+                              {isWorking ? t.worked : t.off}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

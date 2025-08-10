@@ -7,6 +7,7 @@ interface User {
   username: string
   role: string
   employee_id?: string
+  location_id?: string | number
 }
 
 interface AuthContextType {
@@ -37,8 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = (userData: User) => {
-    setUser(userData)
-    localStorage.setItem("restaurant_user", JSON.stringify(userData))
+    // Ensure location_id is always present (even if undefined, but not null)
+    const userWithLocation: User = {
+      ...userData,
+      location_id: userData.location_id !== undefined && userData.location_id !== null ? userData.location_id : undefined,
+    }
+    setUser(userWithLocation)
+    localStorage.setItem("restaurant_user", JSON.stringify(userWithLocation))
   }
 
   const logout = () => {
