@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext } from "react"
 import { useRouter } from "next/navigation"
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client"
+import Link from "next/link"
 
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
@@ -213,10 +214,11 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Apollo helpers
+  // Apollo helpers - Use cache-first to reduce API calls
   const [fetchAll] = useLazyQuery(GET_NOTIFICATIONS, {
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: false,
   })
   const [markSeenMutation] = useMutation(MARK_NOTIFICATION_SEEN)
   const [markAllSeenMutation] = useMutation(MARK_ALL_NOTIFICATIONS_SEEN)
@@ -226,13 +228,10 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
     setUnseenCount((notifications || []).filter((n) => !n.seen).length)
   }, [notifications])
 
-  // Fetch exactly once per full page reload (guard by ref + sessionStorage)
+  // Fetch exactly once per session (not per page reload)
   const hasFetchedRef = useRef(false)
   useEffect(() => {
-    if (!user?.id) return
-    const sessionKey = `rc:notifications:fetched:${user.id}`
-    const alreadyFetched = typeof sessionStorage !== "undefined" && sessionStorage.getItem(sessionKey) === "true"
-    if (hasFetchedRef.current || alreadyFetched) return
+    if (!user?.id || hasFetchedRef.current) return
     hasFetchedRef.current = true
     ;(async () => {
       try {
@@ -245,9 +244,6 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
         })
         const list: Notification[] = data?.notifications ?? []
         setNotifications(list)
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(sessionKey, "true")
-        }
       } catch {
         // ignore
       }
@@ -396,7 +392,7 @@ function GlobalNotificationController() {
   return <audio ref={audioRef} src="/alert.mp3" preload="auto" loop playsInline className="hidden" />
 }
 
-/* ------------------------------ Header ------------------------------ */
+/* ----------------чера Header ------------------------------ */
 
 function DashboardHeader() {
   const { user, logout } = useAuth()
@@ -408,10 +404,13 @@ function DashboardHeader() {
   const [mounted, setMounted] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
 
-  // Also keep admin pending approvals count visible (optional)
+  // Also keep admin pending approvals count visible (optional) - Use cache-first
   const { data: approvalsData } = useQuery(GET_ADMIN_APPROVALS, {
     variables: { status: "pending" },
     skip: user?.role !== "admin",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: false,
   })
   const pendingApprovals = approvalsData?.adminApprovals || []
 
@@ -630,18 +629,22 @@ function DashboardHeader() {
                   <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-white/10 to-transparent h-px my-2" />
 
                   <div className="p-2">
-                    <DropdownMenuItem className="bg-slate-800/40 hover:bg-slate-700/50 border border-slate-600/30 hover:border-slate-500/50 rounded-xl mb-2 p-3 text-white hover:text-cyan-200 transition-all duration-300 cursor-pointer group">
-                      <User className="mr-3 h-4 w-4" />
-                      <span className="font-semibold" dir="auto">
-                        {translations[lang].profile}
-                      </span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="bg-slate-800/40 hover:bg-slate-700/50 border border-slate-600/30 hover:border-slate-500/50 rounded-xl mb-2 p-3 text-white hover:text-cyan-200 transition-all duration-300 cursor-pointer group">
-                      <Settings className="mr-3 h-4 w-4" />
-                      <span className="font-semibold" dir="auto">
-                        {translations[lang].settings}
-                      </span>
-                    </DropdownMenuItem>
+                    <Link href="/dashboard/profile">
+                      <DropdownMenuItem className="bg-slate-800/40 hover:bg-slate-700/50 border border-slate-600/30 hover:border-slate-500/50 rounded-xl mb-2 p-3 text-white hover:text-cyan-200 transition-all duration-300 cursor-pointer group w-full">
+                        <User className="mr-3 h-4 w-4" />
+                        <span className="font-semibold" dir="auto">
+                          {dict.profile}
+                        </span>
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/dashboard/settings">
+                      <DropdownMenuItem className="bg-slate-800/40 hover:bg-slate-700/50 border border-slate-600/30 hover:border-slate-500/50 rounded-xl mb-2 p-3 text-white hover:text-cyan-200 transition-all duration-300 cursor-pointer group w-full">
+                        <Settings className="mr-3 h-4 w-4" />
+                        <span className="font-semibold" dir="auto">
+                          {dict.settings}
+                        </span>
+                      </DropdownMenuItem>
+                    </Link>
 
                     <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-white/10 to-transparent h-px my-2" />
 
@@ -651,7 +654,7 @@ function DashboardHeader() {
                     >
                       <LogOut className="mr-3 h-4 w-4" />
                       <span className="font-semibold" dir="auto">
-                        {translations[lang].logout}
+                        {dict.logout}
                       </span>
                     </DropdownMenuItem>
                   </div>
@@ -717,7 +720,7 @@ function DashboardHeader() {
                       className="text-sm text-slate-400 py-8 text-center bg-slate-800/30 rounded-xl backdrop-blur-sm border border-slate-600/30 w-full"
                       dir="auto"
                     >
-                      {translations[lang].noNotifications}
+                      {dict.noNotifications}
                     </div>
                   </div>
                 ) : (
@@ -766,7 +769,7 @@ function DashboardHeader() {
                                     </span>
                                   )}
                                   <span className="block text-[11px] text-slate-400 mt-1" dir="auto">
-                                    {created ? translations[lang].receivedAt(created) : translations[lang].dateUnknown}
+                                    {created ? dict.receivedAt(created) : dict.dateUnknown}
                                   </span>
                                 </div>
                               </div>

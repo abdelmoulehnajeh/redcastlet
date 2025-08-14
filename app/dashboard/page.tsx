@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,16 +19,26 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Clock, Calendar, DollarSign, Users, TrendingUp, AlertCircle, CheckCircle, FileText, MapPin, Eye, Edit, Trash2, Phone, Mail, Building, UserPlus } from 'lucide-react'
-import { useQuery, useMutation } from "@apollo/client"
 import {
-  GET_DASHBOARD_STATS,
-  GET_LOCATIONS,
-  GET_EMPLOYEES,
-  CREATE_EMPLOYEE,
-  DELETE_EMPLOYEE,
-  UPDATE_EMPLOYEE,
-} from "@/lib/graphql-queries"
+  Clock,
+  Calendar,
+  DollarSign,
+  Users,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  MapPin,
+  Eye,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  Building,
+  UserPlus,
+} from "lucide-react"
+import { useQuery, useMutation } from "@apollo/client"
+import { GET_DASHBOARD_DATA, CREATE_EMPLOYEE, DELETE_EMPLOYEE, UPDATE_EMPLOYEE } from "@/lib/graphql-queries"
 import { toast } from "sonner"
 
 type Lang = "fr" | "ar"
@@ -154,6 +164,10 @@ type Dict = {
 
   // Buttons common
   add: string
+
+  // Optional fields
+  optional: string
+  requiredFields: string
 }
 
 const translations: Record<Lang, Dict> = {
@@ -204,13 +218,13 @@ const translations: Record<Lang, Dict> = {
     addEmployeeDesc: "Créez un nouveau compte employé",
     firstName: "Prénom *",
     lastName: "Nom *",
-    username: "Nom d'utilisateur *",
-    email: "Email *",
+    username: "Nom d'utilisateur",
+    email: "Email",
     phone: "Téléphone",
-    jobTitle: "Poste",
-    salary: "Salaire (DT)",
-    role: "Rôle",
-    restaurant: "Restaurant",
+    jobTitle: "Poste *",
+    salary: "Salaire (DT) *",
+    role: "Rôle *",
+    restaurant: "Restaurant *",
     admin: "Admin",
     employee: "Employé",
     cancel: "Annuler",
@@ -266,6 +280,8 @@ const translations: Record<Lang, Dict> = {
     employeeUpdateError: (m) => `Erreur lors de la mise à jour: ${m}`,
 
     add: "Ajouter",
+    optional: "(optionnel)",
+    requiredFields: "Veuillez remplir tous les champs obligatoires (*)",
   },
   ar: {
     welcome: (u) => `مرحباً، ${u ?? ""}!`,
@@ -314,13 +330,13 @@ const translations: Record<Lang, Dict> = {
     addEmployeeDesc: "إنشاء حساب موظف جديد",
     firstName: "الاسم الأول *",
     lastName: "اسم العائلة *",
-    username: "اسم المستخدم *",
-    email: "البريد الإلكتروني *",
+    username: "اسم المستخدم",
+    email: "البريد الإلكتروني",
     phone: "الهاتف",
-    jobTitle: "الوظيفة",
-    salary: "الراتب (DT)",
-    role: "الدور",
-    restaurant: "المطعم",
+    jobTitle: "الوظيفة *",
+    salary: "الراتب (DT) *",
+    role: "الدور *",
+    restaurant: "المطعم *",
     admin: "مدير النظام",
     employee: "موظف",
     cancel: "إلغاء",
@@ -376,6 +392,8 @@ const translations: Record<Lang, Dict> = {
     employeeUpdateError: (m) => `خطأ أثناء التحديث: ${m}`,
 
     add: "إضافة",
+    optional: "(اختياري)",
+    requiredFields: "يرجى تعبئة جميع الحقول المطلوبة (*)",
   },
 }
 
@@ -422,22 +440,13 @@ export default function DashboardPage() {
     username: "",
   })
 
-  const { data, loading } = useQuery(GET_DASHBOARD_STATS, {
+  // Use combined dashboard data query - single API call for all dashboard data
+  const { data, loading, refetch } = useQuery(GET_DASHBOARD_DATA, {
     variables: { userId: user?.id, role: user?.role },
-  })
-  const {
-    data: locationsData,
-    loading: locationsLoading,
-    refetch: refetchLocations,
-  } = useQuery(GET_LOCATIONS, {
-    skip: user?.role !== "admin",
-  })
-  const {
-    data: employeesData,
-    loading: employeesLoading,
-    refetch: refetchEmployees,
-  } = useQuery(GET_EMPLOYEES, {
-    skip: user?.role !== "admin",
+    skip: !user?.id,
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: false,
   })
 
   const [createEmployee] = useMutation(CREATE_EMPLOYEE, {
@@ -455,8 +464,8 @@ export default function DashboardPage() {
         role: "employee",
         username: "",
       })
-      refetchEmployees()
-      refetchLocations()
+      // Update cache instead of refetching
+      refetch()
     },
     onError: (error) => {
       toast.error(t.employeeCreateError(error.message))
@@ -466,8 +475,7 @@ export default function DashboardPage() {
   const [deleteEmployee] = useMutation(DELETE_EMPLOYEE, {
     onCompleted: () => {
       toast.success(t.employeeDeleted)
-      refetchEmployees()
-      refetchLocations()
+      refetch()
     },
     onError: (error) => {
       toast.error(t.employeeDeleteError(error.message))
@@ -479,8 +487,7 @@ export default function DashboardPage() {
       toast.success(t.employeeUpdated)
       setIsEditEmployeeOpen(false)
       setSelectedEmployee(null)
-      refetchEmployees()
-      refetchLocations()
+      refetch()
     },
     onError: (error) => {
       toast.error(t.employeeUpdateError(error.message))
@@ -488,21 +495,36 @@ export default function DashboardPage() {
   })
 
   const handleCreateEmployee = () => {
-    if (!newEmployee.nom || !newEmployee.prenom || !newEmployee.email || !newEmployee.username) {
-      toast.error(lang === "ar" ? "يرجى ملء جميع الحقول المطلوبة" : "Veuillez remplir tous les champs obligatoires")
+    // Updated validation - only require essential fields
+    if (
+      !newEmployee.nom ||
+      !newEmployee.prenom ||
+      !newEmployee.job_title ||
+      !newEmployee.salaire ||
+      !newEmployee.location_id ||
+      !newEmployee.role
+    ) {
+      toast.error(t.requiredFields)
       return
     }
+
+    // Generate username if not provided
+    const username = newEmployee.username || `${newEmployee.prenom.toLowerCase()}.${newEmployee.nom.toLowerCase()}`
+
+    // Generate email if not provided
+    const email = newEmployee.email || `${username}@restaurant.local`
+
     createEmployee({
       variables: {
         nom: newEmployee.nom,
         prenom: newEmployee.prenom,
-        email: newEmployee.email,
-        telephone: newEmployee.telephone,
+        email: email,
+        telephone: newEmployee.telephone || null,
         job_title: newEmployee.job_title,
         salaire: Number.parseFloat(newEmployee.salaire) || 0,
-        location_id: newEmployee.location_id || null,
+        location_id: newEmployee.location_id,
         role: newEmployee.role,
-        username: newEmployee.username,
+        username: username,
       },
     })
   }
@@ -551,16 +573,15 @@ export default function DashboardPage() {
             />
           ))}
         </div>
-        <div className="relative z-10 p-6 space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="relative z-10 p-3 sm:p-6 space-y-4 sm:space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {[...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="group relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg border border-white/20 rounded-2xl p-6 animate-pulse transform hover:scale-105 transition-all duration-300"
+                className="group relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg border border-white/20 rounded-2xl p-4 sm:p-6 animate-pulse transform hover:scale-105 transition-all duration-300"
                 style={{
                   transform: "perspective(1000px) rotateX(10deg) rotateY(5deg)",
-                  boxShadow:
-                    "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)",
                 }}
               >
                 <div className="h-4 bg-gradient-to-r from-blue-400/30 to-purple-400/30 rounded w-3/4 mb-4"></div>
@@ -575,8 +596,8 @@ export default function DashboardPage() {
   }
 
   const stats = data?.dashboardStats || {}
-  const locations = locationsData?.locations || []
-  const employees = employeesData?.employees || []
+  const locations = data?.locations || []
+  const employees = data?.employees || []
 
   const filteredEmployees = employees.filter((emp: any) => {
     let locationMatch = true
@@ -594,7 +615,10 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden" dir="ltr">
+    <div
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden"
+      dir="ltr"
+    >
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(120,219,255,0.1),transparent_50%)]"></div>
@@ -613,28 +637,31 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="relative z-10 p-6 space-y-8">
+      <div className="relative z-10 p-3 sm:p-6 space-y-4 sm:space-y-8">
         {/* Welcome Section */}
         <div className="group relative transform-gpu perspective-1000">
           <div
-            className="relative bg-gradient-to-r from-red-600/90 via-red-500/90 to-orange-600/90 backdrop-blur-xl border border-red-400/30 rounded-3xl p-8 text-white transition-all duration-500"
+            className="relative bg-gradient-to-r from-red-600/90 via-red-500/90 to-orange-600/90 backdrop-blur-xl border border-red-400/30 rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white transition-all duration-500"
             style={{
               transform: "perspective(1000px) rotateX(5deg)",
               boxShadow:
                 "0 35px 80px -15px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(248, 113, 113, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
             }}
           >
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-yellow-400/20 to-red-400/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -top-10 sm:-top-20 -right-10 sm:-right-20 w-20 sm:w-40 h-20 sm:h-40 bg-gradient-to-br from-yellow-400/20 to-red-400/20 rounded-full blur-3xl animate-pulse"></div>
             <div className="relative z-10">
-              <h1 dir="auto" className="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-white via-yellow-100 to-white bg-clip-text text-transparent">
+              <h1
+                dir="auto"
+                className="text-2xl sm:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4 bg-gradient-to-r from-white via-yellow-100 to-white bg-clip-text text-transparent leading-tight"
+              >
                 {t.welcome(user?.username)}
               </h1>
-              <p dir="auto" className="text-red-100 text-lg sm:text-xl mb-6 leading-relaxed">
+              <p dir="auto" className="text-red-100 text-sm sm:text-lg lg:text-xl mb-4 sm:mb-6 leading-relaxed">
                 {user?.role === "admin" ? t.introAdmin : user?.role === "manager" ? t.introManager : t.introEmployee}
               </p>
               <Badge
                 variant="secondary"
-                className="mt-3 bg-white/20 text-white border-white/30 px-6 py-2 text-lg font-semibold backdrop-blur-sm transition-all duration-300"
+                className="mt-2 sm:mt-3 bg-white/20 text-white border-white/30 px-3 sm:px-6 py-1 sm:py-2 text-sm sm:text-lg font-semibold backdrop-blur-sm transition-all duration-300"
               >
                 {user?.role === "admin" ? t.roleAdmin : user?.role === "manager" ? t.roleManager : t.roleEmployee}
               </Badge>
@@ -643,14 +670,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
           {user?.role === "employee" && (
             <>
               <StatsCard3D
                 title={t.statsHoursThisMonth}
                 value={`${stats.monthlyHours || 0}h`}
                 subtitle={t.statsHoursThisWeek(stats.weeklyHours || 0)}
-                icon={<Clock className="h-8 w-8" />}
+                icon={<Clock className="h-6 w-6 sm:h-8 sm:w-8" />}
                 gradient="from-blue-500 to-cyan-500"
                 glowColor="rgba(59, 130, 246, 0.4)"
               />
@@ -658,7 +685,7 @@ export default function DashboardPage() {
                 title={t.statsEstimatedSalary}
                 value={`${stats.estimatedSalary || 0}DT`}
                 subtitle={t.statsBasedOnRate(stats.hourlyRate || 0)}
-                icon={<DollarSign className="h-8 w-8" />}
+                icon={<DollarSign className="h-6 w-6 sm:h-8 sm:w-8" />}
                 gradient="from-emerald-500 to-teal-500"
                 glowColor="rgba(16, 185, 129, 0.4)"
               />
@@ -666,7 +693,7 @@ export default function DashboardPage() {
                 title={t.statsRemainingLeave}
                 value={`${stats.remainingLeave || 0}`}
                 subtitle={t.statsDaysAvailable}
-                icon={<Calendar className="h-8 w-8" />}
+                icon={<Calendar className="h-6 w-6 sm:h-8 sm:w-8" />}
                 gradient="from-violet-500 to-purple-500"
                 glowColor="rgba(139, 92, 246, 0.4)"
               />
@@ -674,7 +701,7 @@ export default function DashboardPage() {
                 title={t.statsStatus}
                 value={lang === "ar" ? t.active : "Actif"}
                 subtitle={lang === "ar" ? "آخر تسجيل دخول اليوم" : "Dernière connexion aujourd'hui"}
-                icon={<CheckCircle className="h-8 w-8" />}
+                icon={<CheckCircle className="h-6 w-6 sm:h-8 sm:w-8" />}
                 gradient="from-green-500 to-emerald-500"
                 glowColor="rgba(34, 197, 94, 0.4)"
               />
@@ -687,8 +714,11 @@ export default function DashboardPage() {
                 <StatsCard3D
                   title={t.statsActiveEmployees}
                   value={`${stats.activeEmployees || employees.length}`}
-                  subtitle={t.statsOutOfEmployees(stats.activeEmployees || employees.length, stats.totalEmployees || employees.length)}
-                  icon={<Users className="h-8 w-8" />}
+                  subtitle={t.statsOutOfEmployees(
+                    stats.activeEmployees || employees.length,
+                    stats.totalEmployees || employees.length,
+                  )}
+                  icon={<Users className="h-6 w-6 sm:h-8 sm:w-8" />}
                   gradient="from-blue-500 to-indigo-500"
                   glowColor="rgba(59, 130, 246, 0.4)"
                 />
@@ -698,7 +728,7 @@ export default function DashboardPage() {
                   title={t.statsRestaurants}
                   value={`${locations.length}`}
                   subtitle={t.statsRestaurantsSubtitle}
-                  icon={<Building className="h-8 w-8" />}
+                  icon={<Building className="h-6 w-6 sm:h-8 sm:w-8" />}
                   gradient="from-purple-500 to-pink-500"
                   glowColor="rgba(147, 51, 234, 0.4)"
                 />
@@ -708,7 +738,7 @@ export default function DashboardPage() {
                   title={t.statsPenalties}
                   value={`${stats.pendingRequests || 0}`}
                   subtitle={t.statsPenaltiesSubtitle}
-                  icon={<AlertCircle className="h-8 w-8" />}
+                  icon={<AlertCircle className="h-6 w-6 sm:h-8 sm:w-8" />}
                   gradient="from-orange-500 to-red-500"
                   glowColor="rgba(249, 115, 22, 0.4)"
                 />
@@ -718,7 +748,7 @@ export default function DashboardPage() {
                   title={t.statsAdvance}
                   value={`${stats.monthlyRevenue || 0}DT`}
                   subtitle={t.statsRevenueSubtitle(stats.revenueGrowth || 0)}
-                  icon={<TrendingUp className="h-8 w-8" />}
+                  icon={<TrendingUp className="h-6 w-6 sm:h-8 sm:w-8" />}
                   gradient="from-emerald-500 to-green-500"
                   glowColor="rgba(16, 185, 129, 0.4)"
                 />
@@ -730,36 +760,28 @@ export default function DashboardPage() {
         {/* Admin Locations Section */}
         {user?.role === "admin" && (
           <Card3D>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center gap-3 text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-                  <MapPin className="h-7 w-7 text-red-400" />
+                <CardTitle className="flex items-center gap-2 sm:gap-3 text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+                  <MapPin className="h-5 w-5 sm:h-7 sm:w-7 text-red-400" />
                   <span dir="auto">{t.locationsTitle}</span>
                 </CardTitle>
-                <CardDescription className="text-gray-300 text-lg" dir="auto">
+                <CardDescription className="text-gray-300 text-sm sm:text-lg" dir="auto">
                   {t.locationsDesc}
                 </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
-              {locationsLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <LocationCard3D isLoading={true} />
-                    </div>
-                  ))}
-                </div>
-              ) : locations.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {locations.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {locations.map((location: any) => (
                     <LocationCard3D key={location.id} location={location} t={t} />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-400">
-                  <MapPin className="h-16 w-16 mx-auto mb-6 opacity-50" />
-                  <p className="text-xl" dir="auto">
+                <div className="text-center py-8 sm:py-12 text-gray-400">
+                  <MapPin className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 sm:mb-6 opacity-50" />
+                  <p className="text-lg sm:text-xl" dir="auto">
                     {t.noLocations}
                   </p>
                 </div>
@@ -771,268 +793,286 @@ export default function DashboardPage() {
         {/* Admin Employees Management */}
         {user?.role === "admin" && (
           <Card3D>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="w-full">
-                <CardTitle className="flex items-center gap-3 text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  <Users className="h-6 w-6 sm:h-7 sm:w-7 text-blue-400" />
-                  <span dir="auto">{t.employeesTitle}</span>
-                </CardTitle>
-                <CardDescription className="text-gray-300 text-base sm:text-lg" dir="auto">
-                  {t.employeesDesc}
-                </CardDescription>
+            <CardHeader className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="w-full">
+                  <CardTitle className="flex items-center gap-2 sm:gap-3 text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                    <Users className="h-5 w-5 sm:h-7 sm:w-7 text-blue-400" />
+                    <span dir="auto">{t.employeesTitle}</span>
+                  </CardTitle>
+                  <CardDescription className="text-gray-300 text-sm sm:text-lg" dir="auto">
+                    {t.employeesDesc}
+                  </CardDescription>
+                </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                  <div className="flex flex-col sm:flex-row gap-2 w-full">
-                    <div className="flex-1 min-w-[150px]">
-                      <label
-                        htmlFor="employee-location-filter"
-                        className="text-gray-300 text-sm font-medium block mb-1 sm:mb-0 sm:inline"
+                <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold px-4 py-2 sm:px-6 sm:py-3 rounded-xl transition-all duration-300 shadow-lg"
+                      style={{ boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.4)" }}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      <span dir="auto">{t.newEmployeeBtn}</span>
+                    </Button>
+                  </DialogTrigger>
+
+                  <DialogContent className="w-[95vw] max-w-md mx-auto bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl text-white">
+                    <DialogHeader>
+                      <DialogTitle
+                        className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"
                         dir="auto"
                       >
-                        {t.filterRestaurant}
-                      </label>
-                      <div className="relative">
-                        <select
-                          id="employee-location-filter"
-                          value={employeeLocationFilter}
-                          onChange={(e) => setEmployeeLocationFilter(e.target.value)}
-                          className="w-full bg-slate-800/90 border border-slate-600/50 text-white text-sm rounded-2xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-300 appearance-none pr-10 shadow-sm hover:bg-slate-700/90 hover:border-blue-400/70"
+                        {t.addEmployeeTitle}
+                      </DialogTitle>
+                      <DialogDescription className="text-gray-300 text-sm" dir="auto">
+                        {t.addEmployeeDesc}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="prenom" className="text-gray-300 text-sm" dir="auto">
+                            {t.firstName}
+                          </Label>
+                          <Input
+                            id="prenom"
+                            value={newEmployee.prenom}
+                            onChange={(e) => setNewEmployee({ ...newEmployee, prenom: e.target.value })}
+                            placeholder={lang === "ar" ? "محمد" : "Jean"}
+                            className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="nom" className="text-gray-300 text-sm" dir="auto">
+                            {t.lastName}
+                          </Label>
+                          <Input
+                            id="nom"
+                            value={newEmployee.nom}
+                            onChange={(e) => setNewEmployee({ ...newEmployee, nom: e.target.value })}
+                            placeholder={lang === "ar" ? "الهاشمي" : "Dupont"}
+                            className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="job_title" className="text-gray-300 text-sm" dir="auto">
+                          {t.jobTitle}
+                        </Label>
+                        <Input
+                          id="job_title"
+                          value={newEmployee.job_title}
+                          onChange={(e) => setNewEmployee({ ...newEmployee, job_title: e.target.value })}
+                          placeholder={lang === "ar" ? "نادل، طاهٍ، مدير..." : "Serveur, Cuisinier, Manager..."}
+                          className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="salaire" className="text-gray-300 text-sm" dir="auto">
+                            {t.salary}
+                          </Label>
+                          <Input
+                            id="salaire"
+                            type="number"
+                            value={newEmployee.salaire}
+                            onChange={(e) => setNewEmployee({ ...newEmployee, salaire: e.target.value })}
+                            placeholder="2000"
+                            className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="role" className="text-gray-300 text-sm" dir="auto">
+                            {t.role}
+                          </Label>
+                          <Select
+                            value={newEmployee.role}
+                            onValueChange={(value) => setNewEmployee({ ...newEmployee, role: value })}
+                          >
+                            <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-600 text-white">
+                              <SelectItem value="employee">{t.employee}</SelectItem>
+                              <SelectItem value="manager">{t.roleManager.replace("⚡ ", "")}</SelectItem>
+                              <SelectItem value="admin">{t.admin}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="location" className="text-gray-300 text-sm" dir="auto">
+                          {t.restaurant}
+                        </Label>
+                        <Select
+                          value={newEmployee.location_id}
+                          onValueChange={(value) => setNewEmployee({ ...newEmployee, location_id: value })}
                         >
-                          <option value="">{t.all}</option>
-                          {locations.map((loc: any) => (
-                            <option key={loc.id} value={loc.id}>
-                              {loc.name}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </span>
+                          <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white rounded-xl">
+                            <SelectValue placeholder={t.selectRestaurant} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-600 text-white">
+                            {locations.map((location: any) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Optional fields section */}
+                      <div className="border-t border-slate-600/50 pt-4">
+                        <h4 className="text-sm font-medium text-gray-300 mb-3" dir="auto">
+                          Informations optionnelles {t.optional}
+                        </h4>
+
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="username" className="text-gray-300 text-sm" dir="auto">
+                              {t.username} {t.optional}
+                            </Label>
+                            <Input
+                              id="username"
+                              value={newEmployee.username}
+                              onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
+                              placeholder={lang === "ar" ? "mohamed.ali" : "jean.dupont"}
+                              className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                            />
+                            <p className="text-xs text-gray-400 mt-1" dir="auto">
+                              {lang === "ar"
+                                ? "سيتم إنشاؤه تلقائياً إذا ترك فارغاً"
+                                : "Sera généré automatiquement si laissé vide"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="email" className="text-gray-300 text-sm" dir="auto">
+                              {t.email} {t.optional}
+                            </Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={newEmployee.email}
+                              onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                              placeholder={lang === "ar" ? "mohamed.ali@example.com" : "jean.dupont@example.com"}
+                              className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                            />
+                            <p className="text-xs text-gray-400 mt-1" dir="auto">
+                              {lang === "ar"
+                                ? "سيتم إنشاؤه تلقائياً إذا ترك فارغاً"
+                                : "Sera généré automatiquement si laissé vide"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="telephone" className="text-gray-300 text-sm" dir="auto">
+                              {t.phone} {t.optional}
+                            </Label>
+                            <Input
+                              id="telephone"
+                              value={newEmployee.telephone}
+                              onChange={(e) => setNewEmployee({ ...newEmployee, telephone: e.target.value })}
+                              placeholder="0123456789"
+                              className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex-1 min-w-[150px]">
-                      <label
-                        htmlFor="employee-status-filter"
-                        className="text-gray-300 text-sm font-medium block mb-1 sm:mb-0 sm:inline"
-                        dir="auto"
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsAddEmployeeOpen(false)}
+                        className="w-full sm:w-auto border-slate-600 text-gray-300 hover:bg-slate-700"
                       >
-                        {t.filterStatus}
-                      </label>
-                      <div className="relative">
-                        <select
-                          id="employee-status-filter"
-                          value={employeeStatusFilter}
-                          onChange={(e) => setEmployeeStatusFilter(e.target.value)}
-                          className="w-full bg-slate-800/90 border border-slate-600/50 text-white text-sm rounded-2xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-300 appearance-none pr-10 shadow-sm hover:bg-slate-700/90 hover:border-blue-400/70"
-                        >
-                          <option value="">{t.all}</option>
-                          <option value="active">{t.active}</option>
-                          <option value="inactive">{t.inactive}</option>
-                          <option value="suspended">{t.suspended}</option>
-                        </select>
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </span>
-                      </div>
+                        {t.cancel}
+                      </Button>
+                      <Button
+                        onClick={handleCreateEmployee}
+                        className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                      >
+                        {t.create}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                <div className="flex flex-col sm:flex-row gap-2 w-full">
+                  <div className="flex-1 min-w-[150px]">
+                    <label
+                      htmlFor="employee-location-filter"
+                      className="text-gray-300 text-sm font-medium block mb-1"
+                      dir="auto"
+                    >
+                      {t.filterRestaurant}
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="employee-location-filter"
+                        value={employeeLocationFilter}
+                        onChange={(e) => setEmployeeLocationFilter(e.target.value)}
+                        className="w-full bg-slate-800/90 border border-slate-600/50 text-white text-sm rounded-2xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-300 appearance-none pr-10 shadow-sm hover:bg-slate-700/90 hover:border-blue-400/70"
+                      >
+                        <option value="">{t.all}</option>
+                        {locations.map((loc: any) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-[150px]">
+                    <label
+                      htmlFor="employee-status-filter"
+                      className="text-gray-300 text-sm font-medium block mb-1"
+                      dir="auto"
+                    >
+                      {t.filterStatus}
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="employee-status-filter"
+                        value={employeeStatusFilter}
+                        onChange={(e) => setEmployeeStatusFilter(e.target.value)}
+                        className="w-full bg-slate-800/90 border border-slate-600/50 text-white text-sm rounded-2xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-300 appearance-none pr-10 shadow-sm hover:bg-slate-700/90 hover:border-blue-400/70"
+                      >
+                        <option value="">{t.all}</option>
+                        <option value="active">{t.active}</option>
+                        <option value="inactive">{t.inactive}</option>
+                        <option value="suspended">{t.suspended}</option>
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
-
-              <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold px-4 sm:px-6 py-3 rounded-xl transition-all duration-300 shadow-lg"
-                    style={{ boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.4)" }}
-                  >
-                    <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                    <span className="hidden sm:inline" dir="auto">
-                      {t.newEmployeeBtn}
-                    </span>
-                    <span className="sm:hidden" dir="auto">
-                      {t.add}
-                    </span>
-                  </Button>
-                </DialogTrigger>
-
-                <DialogContent className="w-[95vw] max-w-md mx-auto bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl text-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent" dir="auto">
-                      {t.addEmployeeTitle}
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-300" dir="auto">
-                      {t.addEmployeeDesc}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="prenom" className="text-gray-300" dir="auto">
-                          {t.firstName}
-                        </Label>
-                        <Input
-                          id="prenom"
-                          value={newEmployee.prenom}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, prenom: e.target.value })}
-                          placeholder={lang === "ar" ? "محمد" : "Jean"}
-                          className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="nom" className="text-gray-300" dir="auto">
-                          {t.lastName}
-                        </Label>
-                        <Input
-                          id="nom"
-                          value={newEmployee.nom}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, nom: e.target.value })}
-                          placeholder={lang === "ar" ? "الهاشمي" : "Dupont"}
-                          className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="username" className="text-gray-300" dir="auto">
-                        {t.username}
-                      </Label>
-                      <Input
-                        id="username"
-                        value={newEmployee.username}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
-                        placeholder={lang === "ar" ? "mohamed.ali" : "jean.dupont"}
-                        className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="email" className="text-gray-300" dir="auto">
-                        {t.email}
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={newEmployee.email}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                        placeholder={lang === "ar" ? "mohamed.ali@example.com" : "jean.dupont@example.com"}
-                        className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="telephone" className="text-gray-300" dir="auto">
-                        {t.phone}
-                      </Label>
-                      <Input
-                        id="telephone"
-                        value={newEmployee.telephone}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, telephone: e.target.value })}
-                        placeholder="0123456789"
-                        className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="job_title" className="text-gray-300" dir="auto">
-                        {t.jobTitle}
-                      </Label>
-                      <Input
-                        id="job_title"
-                        value={newEmployee.job_title}
-                        onChange={(e) => setNewEmployee({ ...newEmployee, job_title: e.target.value })}
-                        placeholder={lang === "ar" ? "نادل، طاهٍ، مدير..." : "Serveur, Cuisinier, Manager..."}
-                        className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="salaire" className="text-gray-300" dir="auto">
-                          {t.salary}
-                        </Label>
-                        <Input
-                          id="salaire"
-                          type="number"
-                          value={newEmployee.salaire}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, salaire: e.target.value })}
-                          placeholder="2000"
-                          className="bg-slate-700/50 border-slate-600 text-white rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="role" className="text-gray-300" dir="auto">
-                          {t.role}
-                        </Label>
-                        <Select value={newEmployee.role} onValueChange={(value) => setNewEmployee({ ...newEmployee, role: value })}>
-                          <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white rounded-xl">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-600 text-white">
-                            <SelectItem value="employee">{t.employee}</SelectItem>
-                            <SelectItem value="manager">{t.roleManager.replace("⚡ ", "")}</SelectItem>
-                            <SelectItem value="admin">{t.admin}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="location" className="text-gray-300" dir="auto">
-                        {t.restaurant}
-                      </Label>
-                      <Select
-                        value={newEmployee.location_id}
-                        onValueChange={(value) => setNewEmployee({ ...newEmployee, location_id: value })}
-                      >
-                        <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white rounded-xl">
-                          <SelectValue placeholder={t.selectRestaurant} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-600 text-white">
-                          {locations.map((location: any) => (
-                            <SelectItem key={location.id} value={location.id}>
-                              {location.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-                    <Button variant="outline" onClick={() => setIsAddEmployeeOpen(false)} className="w-full sm:w-auto border-slate-600 text-gray-300 hover:bg-slate-700">
-                      {t.cancel}
-                    </Button>
-                    <Button onClick={handleCreateEmployee} className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600">
-                      {t.create}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </CardHeader>
 
             <CardContent className="px-2 sm:px-6">
-              {employeesLoading ? (
-                <div className="space-y-4">
-                  {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center space-x-4 p-4 sm:p-6 border border-slate-600/50 rounded-2xl animate-pulse bg-slate-700/30"
-                    >
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-600 rounded-full"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-slate-600 rounded w-1/4"></div>
-                        <div className="h-3 bg-slate-600 rounded w-1/2"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : filteredEmployees.length > 0 ? (
+              {filteredEmployees.length > 0 ? (
                 <>
                   {/* Mobile Card View */}
                   <div className="block lg:hidden space-y-4">
@@ -1043,7 +1083,7 @@ export default function DashboardPage() {
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-white text-lg" dir="auto">
+                            <h3 className="font-semibold text-white text-base sm:text-lg" dir="auto">
                               {employee.prenom} {employee.nom}
                             </h3>
                             <p className="text-sm text-gray-400">
@@ -1076,10 +1116,12 @@ export default function DashboardPage() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm text-gray-300">
                               <Mail className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate" dir="auto">{employee.email}</span>
+                              <span className="truncate" dir="auto">
+                                {employee.email}
+                              </span>
                             </div>
                             {employee.telephone && (
-                              <div className="flex items-center gap-2 text-sm text-gray-3 00">
+                              <div className="flex items-center gap-2 text-sm text-gray-300">
                                 <Phone className="h-3 w-3 flex-shrink-0" />
                                 <span>{employee.telephone}</span>
                               </div>
@@ -1141,7 +1183,12 @@ export default function DashboardPage() {
                           {showAllEmployees ? (
                             <>
                               {t.showLess}
-                              <svg className="w-4 h-4 ml-2 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg
+                                className="w-4 h-4 ml-2 transform rotate-180"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                               </svg>
                             </>
@@ -1163,18 +1210,35 @@ export default function DashboardPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-slate-600 hover:bg-slate-700/50">
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.employeeCol}</TableHead>
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.contactCol}</TableHead>
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.jobCol}</TableHead>
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.restaurantCol}</TableHead>
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.salaryCol}</TableHead>
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.statusCol}</TableHead>
-                          <TableHead className="text-gray-300 font-semibold" dir="auto">{t.actionsCol}</TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.employeeCol}
+                          </TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.contactCol}
+                          </TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.jobCol}
+                          </TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.restaurantCol}
+                          </TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.salaryCol}
+                          </TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.statusCol}
+                          </TableHead>
+                          <TableHead className="text-gray-300 font-semibold" dir="auto">
+                            {t.actionsCol}
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredEmployees.map((employee: any) => (
-                          <TableRow key={employee.id} className="border-slate-600/50 hover:bg-slate-700/30 transition-all duration-300">
+                          <TableRow
+                            key={employee.id}
+                            className="border-slate-600/50 hover:bg-slate-700/30 transition-all duration-300"
+                          >
                             <TableCell>
                               <div>
                                 <div className="font-medium text-white" dir="auto">
@@ -1199,7 +1263,9 @@ export default function DashboardPage() {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="text-gray-300" dir="auto">{employee.job_title || t.notDefined}</TableCell>
+                            <TableCell className="text-gray-300" dir="auto">
+                              {employee.job_title || t.notDefined}
+                            </TableCell>
                             <TableCell>
                               {employee.location ? (
                                 <div className="flex items-center gap-1 text-gray-300" dir="auto">
@@ -1259,8 +1325,8 @@ export default function DashboardPage() {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-12 text-gray-400">
-                  <Users className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-6 opacity-50" />
+                <div className="text-center py-8 sm:py-12 text-gray-400">
+                  <Users className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 sm:mb-6 opacity-50" />
                   <p className="text-lg sm:text-xl" dir="auto">
                     {t.noEmployees}
                   </p>
@@ -1271,25 +1337,28 @@ export default function DashboardPage() {
         )}
 
         {/* Spacer for mobile */}
-        <div className="h-20"></div>
+        <div className="h-16 sm:h-20"></div>
 
         {/* Edit Employee Dialog */}
         <Dialog open={isEditEmployeeOpen} onOpenChange={setIsEditEmployeeOpen}>
-          <DialogContent className="max-w-md bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl text-white">
+          <DialogContent className="w-[95vw] max-w-md mx-auto bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl text-white">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent" dir="auto">
+              <DialogTitle
+                className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent"
+                dir="auto"
+              >
                 {t.editEmployeeTitle}
               </DialogTitle>
-              <DialogDescription className="text-gray-300" dir="auto">
+              <DialogDescription className="text-gray-300 text-sm" dir="auto">
                 {t.editEmployeeDesc(selectedEmployee?.prenom, selectedEmployee?.nom)}
               </DialogDescription>
             </DialogHeader>
 
             {selectedEmployee && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit-salaire" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-salaire" className="text-gray-300 text-sm" dir="auto">
                       {t.salary}
                     </Label>
                     <Input
@@ -1301,7 +1370,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-prime" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-prime" className="text-gray-300 text-sm" dir="auto">
                       {t.bonus}
                     </Label>
                     <Input
@@ -1316,7 +1385,7 @@ export default function DashboardPage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="edit-infractions" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-infractions" className="text-gray-300 text-sm" dir="auto">
                       {t.fines}
                     </Label>
                     <Input
@@ -1328,7 +1397,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-absence" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-absence" className="text-gray-300 text-sm" dir="auto">
                       {t.absences}
                     </Label>
                     <Input
@@ -1340,7 +1409,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-retard" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-retard" className="text-gray-300 text-sm" dir="auto">
                       {t.delays}
                     </Label>
                     <Input
@@ -1355,7 +1424,7 @@ export default function DashboardPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit-avance" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-avance" className="text-gray-300 text-sm" dir="auto">
                       {t.advances}
                     </Label>
                     <Input
@@ -1367,7 +1436,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-tenu" className="text-gray-300" dir="auto">
+                    <Label htmlFor="edit-tenu" className="text-gray-300 text-sm" dir="auto">
                       {t.uniforms}
                     </Label>
                     <Input
@@ -1381,10 +1450,13 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-status" className="text-gray-300" dir="auto">
+                  <Label htmlFor="edit-status" className="text-gray-300 text-sm" dir="auto">
                     {t.statusCol}
                   </Label>
-                  <Select value={selectedEmployee.status} onValueChange={(value) => setSelectedEmployee({ ...selectedEmployee, status: value })}>
+                  <Select
+                    value={selectedEmployee.status}
+                    onValueChange={(value) => setSelectedEmployee({ ...selectedEmployee, status: value })}
+                  >
                     <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
@@ -1398,11 +1470,18 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditEmployeeOpen(false)} className="border-slate-600 text-gray-300 hover:bg-slate-700">
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditEmployeeOpen(false)}
+                className="w-full sm:w-auto border-slate-600 text-gray-300 hover:bg-slate-700"
+              >
                 {t.cancel}
               </Button>
-              <Button onClick={handleUpdateEmployee} className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600">
+              <Button
+                onClick={handleUpdateEmployee}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600"
+              >
                 {t.save}
               </Button>
             </DialogFooter>
@@ -1412,18 +1491,18 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <Card3D>
           <CardHeader>
-            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-3">
+            <CardTitle className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2 sm:gap-3">
               <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-sm sm:text-base">
                 {"⚡"}
               </div>
               <span dir="auto">{t.quickActionsTitle}</span>
             </CardTitle>
-            <CardDescription className="text-gray-300 text-base sm:text-lg" dir="auto">
+            <CardDescription className="text-gray-300 text-sm sm:text-lg" dir="auto">
               {t.quickActionsDesc}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="px-4 sm:px-8">
+          <CardContent className="px-3 sm:px-8">
             {/* Mobile */}
             <div className="block sm:hidden space-y-3">
               {user?.role === "employee" && (
@@ -1494,7 +1573,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Desktop/Tablet */}
-            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {user?.role === "employee" && (
                 <>
                   <QuickActionCard3D
@@ -1583,7 +1662,7 @@ function StatsCard3D({ title, value, subtitle, icon, gradient, glowColor }: any)
   return (
     <div className="group relative transform-gpu perspective-1000">
       <div
-        className={`relative bg-gradient-to-br ${gradient} backdrop-blur-xl border border-white/20 rounded-2xl p-6 text-white transform hover:rotateX-12 hover:rotateY-6 hover:scale-105 transition-all duration-500 cursor-pointer`}
+        className={`relative bg-gradient-to-br ${gradient} backdrop-blur-xl border border-white/20 rounded-2xl p-4 sm:p-6 text-white transform hover:rotateX-12 hover:rotateY-6 hover:scale-105 transition-all duration-500 cursor-pointer`}
         style={{
           transform: "perspective(1000px) rotateX(10deg) rotateY(-5deg)",
           boxShadow: `0 25px 50px -12px ${glowColor}, 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)`,
@@ -1591,17 +1670,24 @@ function StatsCard3D({ title, value, subtitle, icon, gradient, glowColor }: any)
       >
         <div
           className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"
-          style={{ background: `radial-gradient(circle at 50% 50%, ${glowColor}, transparent 70%)`, filter: "blur(20px)" }}
+          style={{
+            background: `radial-gradient(circle at 50% 50%, ${glowColor}, transparent 70%)`,
+            filter: "blur(20px)",
+          }}
         />
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-white/80 font-medium text-sm tracking-wide uppercase" dir="auto">{title}</div>
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="text-white/80 font-medium text-xs sm:text-sm tracking-wide uppercase" dir="auto">
+              {title}
+            </div>
             <div className="text-white/60 group-hover:text-white/80 transition-colors duration-300">{icon}</div>
           </div>
-          <div className="text-3xl font-bold mb-2 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+          <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
             {value}
           </div>
-          <div className="text-white/70 text-sm" dir="auto">{subtitle}</div>
+          <div className="text-white/70 text-xs sm:text-sm" dir="auto">
+            {subtitle}
+          </div>
         </div>
         <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -1616,15 +1702,15 @@ function Card3D({ children, className = "" }: any) {
   return (
     <div className="group relative transform-gpu perspective-1000">
       <div
-        className={`relative bg-slate-800/40 backdrop-blur-xl border border-slate-600/50 rounded-3xl text-white transform hover:rotateX-2 hover:rotateY-1 transition-all duration-500 ${className}`}
+        className={`relative bg-slate-800/40 backdrop-blur-xl border border-slate-600/50 rounded-2xl sm:rounded-3xl text-white transform hover:rotateX-2 hover:rotateY-1 transition-all duration-500 ${className}`}
         style={{
           transform: "perspective(1000px) rotateX(2deg)",
           boxShadow:
             "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
         }}
       >
-        <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-400/20 via-cyan-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
-        <div className="relative z-10 p-8">{children}</div>
+        <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-purple-400/20 via-cyan-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
+        <div className="relative z-10 p-4 sm:p-8">{children}</div>
       </div>
     </div>
   )
@@ -1634,7 +1720,7 @@ function Card3D({ children, className = "" }: any) {
 function LocationCard3D({ location, isLoading = false, t }: any) {
   if (isLoading) {
     return (
-      <div className="relative bg-slate-700/30 backdrop-blur-lg border border-slate-600/50 rounded-2xl p-6 animate-pulse">
+      <div className="relative bg-slate-700/30 backdrop-blur-lg border border-slate-600/50 rounded-2xl p-4 sm:p-6 animate-pulse">
         <div className="h-6 bg-slate-600 rounded w-3/4 mb-3"></div>
         <div className="h-4 bg-slate-600 rounded w-1/2 mb-4"></div>
         <div className="h-4 bg-slate-600 rounded w-2/3 mb-2"></div>
@@ -1645,7 +1731,7 @@ function LocationCard3D({ location, isLoading = false, t }: any) {
   return (
     <div className="group relative transform-gpu perspective-1000">
       <div
-        className="relative bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-xl border border-slate-600/50 rounded-2xl p-6 text-white transform hover:rotateX-6 hover:rotateY-3 hover:scale-105 transition-all duration-500"
+        className="relative bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-xl border border-slate-600/50 rounded-2xl p-4 sm:p-6 text-white transform hover:rotateX-6 hover:rotateY-3 hover:scale-105 transition-all duration-500"
         style={{
           transform: "perspective(1000px) rotateX(5deg) rotateY(-2deg)",
           boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)",
@@ -1654,33 +1740,40 @@ function LocationCard3D({ location, isLoading = false, t }: any) {
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div className="relative z-10">
           <div className="mb-4">
-            <h3 className="text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent" dir="auto">
+            <h3
+              className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent"
+              dir="auto"
+            >
               {location.name}
             </h3>
-            <p className="text-gray-400 flex items-center gap-2 mt-2" dir="auto">
+            <p className="text-gray-400 flex items-center gap-2 mt-2 text-sm" dir="auto">
               <MapPin className="h-4 w-4" />
               {location.address}
             </p>
           </div>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-gray-300" dir="auto">{t.employeesLabel}</span>
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+              <span className="text-gray-300 text-sm" dir="auto">
+                {t.employeesLabel}
+              </span>
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
                 {location.employees?.length || 0}
               </Badge>
             </div>
             {location.manager && (
               <div className="flex justify-between items-center">
-                <span className="text-gray-300" dir="auto">{t.managerLabel}</span>
-                <span className="font-medium text-white" dir="auto">
+                <span className="text-gray-300 text-sm" dir="auto">
+                  {t.managerLabel}
+                </span>
+                <span className="font-medium text-white text-sm" dir="auto">
                   {location.manager.profile?.first_name} {location.manager.profile?.last_name}
                 </span>
               </div>
             )}
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <Button
                 asChild
-                className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-300"
+                className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-300 text-sm"
                 style={{ boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.3)" }}
               >
                 <Link href={`/dashboard/admin/location/${location.id}`}>
@@ -1700,13 +1793,19 @@ function LocationCard3D({ location, isLoading = false, t }: any) {
 function QuickActionMobile({ href, icon, title, subtitle, gradient }: any) {
   return (
     <Link href={href} className="block">
-      <div className={`relative bg-gradient-to-r ${gradient} backdrop-blur-sm border border-white/20 rounded-xl p-4 text-white hover:scale-[1.02] active:scale-95 transition-all duration-200 shadow-lg`}>
+      <div
+        className={`relative bg-gradient-to-r ${gradient} backdrop-blur-sm border border-white/20 rounded-xl p-4 text-white hover:scale-[1.02] active:scale-95 transition-all duration-200 shadow-lg`}
+      >
         <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/5 to-transparent opacity-0 active:opacity-100 transition-opacity duration-200"></div>
         <div className="relative z-10 flex items-center gap-4">
           <div className="flex-shrink-0 p-2 bg-white/10 rounded-lg backdrop-blur-sm">{icon}</div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white text-base leading-tight" dir="auto">{title}</h3>
-            <p className="text-white/80 text-sm mt-1 leading-tight" dir="auto">{subtitle}</p>
+            <h3 className="font-semibold text-white text-base leading-tight" dir="auto">
+              {title}
+            </h3>
+            <p className="text-white/80 text-sm mt-1 leading-tight" dir="auto">
+              {subtitle}
+            </p>
           </div>
           <div className="flex-shrink-0 text-white/60">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1736,7 +1835,10 @@ function QuickActionCard3D({ href, icon, title, gradient }: any) {
             <div className="text-white/90 group-hover:text-white transition-colors duration-300 transform group-hover:scale-110">
               {icon}
             </div>
-            <span className="text-xs sm:text-sm font-semibold text-center text-white/90 group-hover:text-white transition-colors duration-300 leading-tight" dir="auto">
+            <span
+              className="text-xs sm:text-sm font-semibold text-center text-white/90 group-hover:text-white transition-colors duration-300 leading-tight"
+              dir="auto"
+            >
               {title}
             </span>
           </div>

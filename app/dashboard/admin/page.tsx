@@ -34,6 +34,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { GET_ADMIN_DATA } from "@/lib/graphql-queries"
+import { useAuth } from "@/lib/auth-context"
 
 const revenueData = [
   { month: "Jan", revenue: 125000, employees: 45 },
@@ -64,23 +66,48 @@ const RECENT_ACTIVITIES_QUERY = gql`
 `
 
 export default function AdminDashboard() {
+  const { user } = useAuth()
   const { lang, t, locale, formatNumber } = useLang("fr")
 
   // Dialog states
   const [openActivitiesList, setOpenActivitiesList] = React.useState(false)
   const [selectedActivity, setSelectedActivity] = React.useState<any | null>(null)
 
-  // Fetch recent activities
-  const { data, loading, error } = useQuery(RECENT_ACTIVITIES_QUERY, {
-    variables: { limit: 10 },
-    fetchPolicy: "cache-and-network",
+  // Use combined admin data query - single API call for all admin dashboard data
+  const { data, loading, error } = useQuery(GET_ADMIN_DATA, {
+    variables: {
+      userId: user?.id,
+      role: user?.role,
+      approvalStatus: "pending",
+    },
+    skip: !user?.id || user?.role !== "admin",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: false,
   })
 
-  const recentActivities = data?.recentActivities || []
-  const totalEmployees = locationData.reduce((sum, loc) => sum + loc.employees, 0)
+  // Fetch recent activities separately as it's optional
+  const {
+    data: activitiesData,
+    loading: activitiesLoading,
+    error: activitiesError,
+  } = useQuery(RECENT_ACTIVITIES_QUERY, {
+    variables: { limit: 10 },
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: false,
+  })
+
+  const recentActivities = activitiesData?.recentActivities || []
+  const stats = data?.dashboardStats || {}
+  const employees = data?.employees || []
+  const locations = data?.locations || []
+  const adminApprovals = data?.adminApprovals || []
+
+  const totalEmployees = employees.length
   const totalRevenue = locationData.reduce((sum, loc) => sum + loc.revenue, 0)
-  const pendingApprovals = 8
-  const activeLocations = locationData.filter((loc) => loc.status === "active").length
+  const pendingApprovals = adminApprovals.length
+  const activeLocations = locations.filter((loc: any) => (loc.employees?.length || 0) > 0).length
 
   const monthKey = (m: string) => {
     const map: Record<string, string> = {
@@ -99,7 +126,7 @@ export default function AdminDashboard() {
       ? `${new Intl.NumberFormat(locale).format(Math.round(totalRevenue / 1000))} ألف د.ت`
       : `${new Intl.NumberFormat(locale).format(Math.round(totalRevenue / 1000))}KDT`
 
-  const stats = [
+  const dashboardStats = [
     {
       title: t("stat_total_employees"),
       value: formatNumber(totalEmployees),
@@ -245,6 +272,46 @@ export default function AdminDashboard() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Loading skeleton */}
+        <div aria-hidden="true">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-30 animate-float"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 6}s`,
+                animationDuration: `${6 + Math.random() * 4}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-3 sm:p-4 lg:p-6 relative z-10">
+          <div className="glass-card backdrop-blur-futuristic p-4 sm:p-6 lg:p-8 text-white shadow-2xl animate-pulse">
+            <div className="h-8 bg-white/20 rounded w-64 mb-4"></div>
+            <div className="h-4 bg-white/20 rounded w-48"></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="glass-card backdrop-blur-futuristic border-0 shadow-2xl animate-pulse">
+                <CardContent className="p-4 sm:p-5 lg:p-6">
+                  <div className="h-6 bg-white/20 rounded w-32 mb-2"></div>
+                  <div className="h-8 bg-white/20 rounded w-16 mb-2"></div>
+                  <div className="h-4 bg-white/20 rounded w-24"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* floating particles */}
@@ -314,7 +381,7 @@ export default function AdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-          {stats.map((stat, index) => (
+          {dashboardStats.map((stat, index) => (
             <Link key={index} href={stat.link}>
               <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl transform transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer group relative overflow-hidden">
                 <div
@@ -603,9 +670,9 @@ export default function AdminDashboard() {
 
           <CardContent className="relative z-10 p-4 sm:p-5 lg:p-6 pt-0">
             <div className="space-y-3 sm:space-y-4">
-              {loading && <div className="text-slate-400">{t("loading_activities")}</div>}
-              {error && <div className="text-red-400">{t("error_loading_activities")}</div>}
-              {!loading && !error && recentActivities.length === 0 && (
+              {activitiesLoading && <div className="text-slate-400">{t("loading_activities")}</div>}
+              {activitiesError && <div className="text-red-400">{t("error_loading_activities")}</div>}
+              {!activitiesLoading && !activitiesError && recentActivities.length === 0 && (
                 <div className="text-slate-400">{t("no_recent_activity")}</div>
               )}
 
@@ -629,9 +696,9 @@ export default function AdminDashboard() {
 
           <div className="overflow-y-auto pr-1" style={{ maxHeight: "60vh" }}>
             <div className="space-y-3 sm:space-y-4">
-              {loading && <div className="text-slate-400">{t("loading_activities")}</div>}
-              {error && <div className="text-red-400">{t("error_loading_activities")}</div>}
-              {!loading && !error && recentActivities.length === 0 && (
+              {activitiesLoading && <div className="text-slate-400">{t("loading_activities")}</div>}
+              {activitiesError && <div className="text-red-400">{t("error_loading_activities")}</div>}
+              {!activitiesLoading && !activitiesError && recentActivities.length === 0 && (
                 <div className="text-slate-400">{t("no_recent_activity")}</div>
               )}
               {recentActivities.map((activity: any) => renderActivityItem(activity))}

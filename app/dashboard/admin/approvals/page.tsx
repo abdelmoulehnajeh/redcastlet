@@ -286,7 +286,7 @@ const translations: Record<Lang, Dict> = {
     loadingLabel: "جاري...",
 
     noNotificationsTitle: "لا توجد طلبات مدير",
-    noNotificationsDesc: "تمت معالجة جميع الطلبات",
+    noNotificationsDesc: "تمت معالجة جميع ال��لبات",
     noLeaveTitle: "لا توجد طلبات قيد الانتظار",
     noLeaveDesc: "تمت معالجة جميع الطلبات",
     dateUnknown: "تاريخ غير معروف",

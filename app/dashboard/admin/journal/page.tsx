@@ -17,7 +17,19 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, Save, User, MapPin, ChevronLeft, ChevronRight, Check, X } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  Save,
+  User,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  AlertTriangle,
+  Bell,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useMutation, useLazyQuery } from "@apollo/client"
 import {
@@ -78,6 +90,7 @@ type Dict = {
   nextMonth: string
   locationAbbrev: string
   notifPlanOk: string
+  weeklyPlan: string
 }
 
 const translations: Record<Lang, Dict> = {
@@ -140,6 +153,7 @@ const translations: Record<Lang, Dict> = {
     nextMonth: "Mois suivant",
     locationAbbrev: "Rest.",
     notifPlanOk: "Planning du mois envoyé à l'employé",
+    weeklyPlan: "Planning Hebdo",
   },
   ar: {
     pageTitle: "دفتر المسؤول",
@@ -200,6 +214,7 @@ const translations: Record<Lang, Dict> = {
     nextMonth: "الشهر التالي",
     locationAbbrev: "مطعم",
     notifPlanOk: "تم إرسال تخطيط الشهر للموظف",
+    weeklyPlan: "الجدول الأسبوعي",
   },
 }
 
@@ -290,7 +305,7 @@ function getAbbrev(name: string, max = 3) {
 }
 
 // ----- Component -----
-export default function JournalPage() {
+export default function AdminJournalPage() {
   const lang = useLang()
   const t = translations[lang]
   const { toast } = useToast()
@@ -310,16 +325,42 @@ export default function JournalPage() {
   const [monthEdits, setMonthEdits] = useState<Record<string, DayAssignment>>({})
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [plannerLoading, setPlannerLoading] = useState(false)
+  const [viewPlansOpen, setViewPlansOpen] = useState(false)
+  const [plansLoading, setPlansLoading] = useState(false)
+  const [monthlyPlans, setMonthlyPlans] = useState<any[]>([])
+
+  const [currentDayAlerts, setCurrentDayAlerts] = useState<Record<string, boolean>>({})
+  const [lastApiCall, setLastApiCall] = useState<number>(0)
+  const [cachedSchedules, setCachedSchedules] = useState<any[]>([])
 
   // GraphQL queries/mutations
-  const { data: employeesData, error: employeesError, loading: employeesLoading } = useQuery(GET_EMPLOYEES)
-  const { data: locationsData, error: locationsError, loading: locationsLoading } = useQuery(GET_LOCATIONS)
+  const {
+    data: employeesData,
+    error: employeesError,
+    loading: employeesLoading,
+  } = useQuery(GET_EMPLOYEES, {
+    fetchPolicy: "cache-first",
+    errorPolicy: "all",
+    notifyOnNetworkStatusChange: false,
+  })
+  const {
+    data: locationsData,
+    error: locationsError,
+    loading: locationsLoading,
+  } = useQuery(GET_LOCATIONS, {
+    fetchPolicy: "cache-first",
+    errorPolicy: "all",
+  })
   const {
     data: schedulesData,
     error: schedulesError,
     loading: schedulesLoading,
     refetch,
-  } = useQuery(GET_WORK_SCHEDULES)
+  } = useQuery(GET_WORK_SCHEDULES, {
+    fetchPolicy: "cache-and-network",
+    pollInterval: 300000, // Poll every 5 minutes instead of constant refetching
+    errorPolicy: "all",
+  })
   const [getRange, { data: rangeData }] = useLazyQuery(GET_WORK_SCHEDULES_RANGE)
   const [createSchedule] = useMutation(CREATE_WORK_SCHEDULE)
   const [updateSchedule] = useMutation(UPDATE_WORK_SCHEDULE)
@@ -354,30 +395,44 @@ export default function JournalPage() {
   }, [plannerMonth, lang])
 
   // Build employees
-  const employees = (employeesData?.employees ?? []).map((emp: any) => ({
-    id: emp.id,
-    name: `${emp.prenom} ${emp.nom}`,
-    position: emp.job_title,
-    location: emp.location?.name || "",
-    job_title: emp.job_title,
-    prenom: emp.prenom,
-    nom: emp.nom,
-    profile: emp.profile,
-    locationObj: emp.location,
-  }))
+  // Memoized employees and locations
+  const employees = useMemo(
+    () =>
+      (employeesData?.employees ?? []).map((emp: any) => ({
+        id: emp.id,
+        name: `${emp.prenom} ${emp.nom}`,
+        position: emp.job_title,
+        location: emp.location?.name || "",
+        job_title: emp.job_title,
+        prenom: emp.prenom,
+        nom: emp.nom,
+        profile: emp.profile,
+        locationObj: emp.location,
+      })),
+    [employeesData],
+  )
 
   const allJobPositions: string[] = useMemo(
     () => Array.from(new Set(employees.map((emp: any) => emp.job_title).filter(Boolean))),
     [employees],
   )
 
-  const locations = Array.from(new Set(employees.map((emp: any) => emp.location))).filter(Boolean)
-  const filteredEmployees =
-    selectedLocation && selectedLocation !== "all"
-      ? employees.filter((emp: any) => emp.location === selectedLocation)
-      : employees
+  const locations = useMemo(
+    () => Array.from(new Set(employees.map((emp: any) => emp.location))).filter(Boolean),
+    [employees],
+  )
+  const filteredEmployees = useMemo(
+    () =>
+      selectedLocation && selectedLocation !== "all"
+        ? employees.filter((emp: any) => emp.location === selectedLocation)
+        : employees,
+    [employees, selectedLocation],
+  )
 
-  const selectedEmployeeData = filteredEmployees.find((emp: any) => emp.id === selectedEmployee)
+  const selectedEmployeeData = useMemo(
+    () => filteredEmployees.find((emp: any) => emp.id === selectedEmployee),
+    [filteredEmployees, selectedEmployee],
+  )
 
   // Helper: get the shift for an employee and day from schedulesData
   function getEmployeeSchedule(employeeId: string, dayKey: string) {
@@ -543,6 +598,73 @@ export default function JournalPage() {
     handleScheduleChange(day, value)
   }
 
+  const checkCurrentDayAssignments = useMemo(() => {
+    const today = new Date()
+    const todayKey = ymd(today)
+    const alerts: Record<string, boolean> = {}
+
+    if (employeesData?.employees && schedulesData?.workSchedules) {
+      const employees = employeesData.employees
+      const schedules = schedulesData.workSchedules
+
+      employees.forEach((employee: any) => {
+        const todaySchedule = schedules.find(
+          (s: any) => s.employee_id === employee.id && normalizeDateKey(s.date) === todayKey,
+        )
+
+        // Check if employee needs restaurant assignment for today
+        const needsUpdate =
+          !todaySchedule || !todaySchedule.shift_type || todaySchedule.shift_type === "Repos" || !employee.location
+
+        if (needsUpdate) {
+          alerts[employee.id] = true
+        }
+      })
+    }
+
+    return alerts
+  }, [employeesData, schedulesData])
+
+  useEffect(() => {
+    setCurrentDayAlerts(checkCurrentDayAssignments)
+  }, [checkCurrentDayAssignments])
+
+  const optimizedRefetch = useMemo(() => {
+    return () => {
+      const now = Date.now()
+      if (now - lastApiCall < 30000) {
+        // Prevent API calls more frequent than 30 seconds
+        return Promise.resolve()
+      }
+      setLastApiCall(now)
+      return refetch()
+    }
+  }, [refetch, lastApiCall])
+
+  function getCurrentDayRestaurantStatus(employeeId: string) {
+    const today = new Date()
+    const todayKey = ymd(today)
+
+    if (!schedulesData?.workSchedules) return { needsUpdate: true, restaurant: null, shift: null }
+
+    const todaySchedule = schedulesData.workSchedules.find(
+      (s: any) => s.employee_id === employeeId && normalizeDateKey(s.date) === todayKey,
+    )
+
+    const employee = employeesData?.employees?.find((emp: any) => emp.id === employeeId)
+    const restaurant = employee?.location?.name
+
+    const needsUpdate =
+      !todaySchedule || !todaySchedule.shift_type || todaySchedule.shift_type === "Repos" || !restaurant
+
+    return {
+      needsUpdate,
+      restaurant,
+      shift: todaySchedule?.shift_type,
+      restaurantCode: restaurant ? getAbbrev(restaurant, 3) : null,
+    }
+  }
+
   // ----- Render -----
   return (
     <div className="min-h-screen relative overflow-hidden" dir="ltr">
@@ -571,7 +693,7 @@ export default function JournalPage() {
             <div className="w-12 h-12 bg-gradient-to-br from-blue-700/40 to-purple-700/40 rounded-xl flex items-center justify-center border border-white/10">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1
                 className="text-2xl md:text-3xl font-bold mb-1 bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent"
                 dir="auto"
@@ -582,8 +704,69 @@ export default function JournalPage() {
                 {t.pageSubtitle}
               </p>
             </div>
+            {Object.keys(currentDayAlerts).length > 0 && (
+              <div className="flex items-center space-x-2 bg-orange-600/20 border border-orange-500/30 rounded-lg px-3 py-2">
+                <AlertTriangle className="w-5 h-5 text-orange-400" />
+                <div className="text-sm">
+                  <div className="text-orange-200 font-medium">{Object.keys(currentDayAlerts).length} employé(s)</div>
+                  <div className="text-orange-300 text-xs">Besoin d'assignation restaurant</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {Object.keys(currentDayAlerts).length > 0 && (
+          <Card className="glass-card backdrop-blur-futuristic border border-orange-500/30 shadow-2xl bg-gradient-to-br from-orange-900/20 via-red-900/20 to-orange-900/20">
+            <CardHeader>
+              <CardTitle className="flex items-center text-orange-200">
+                <Bell className="w-5 h-5 mr-2" />
+                Assignations Restaurant - Aujourd'hui
+              </CardTitle>
+              <CardDescription className="text-orange-300">
+                Les employés suivants ont besoin d'une assignation restaurant pour aujourd'hui
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Object.keys(currentDayAlerts).map((employeeId) => {
+                  const employee = employeesData?.employees?.find((emp: any) => emp.id === employeeId)
+                  const status = getCurrentDayRestaurantStatus(employeeId)
+
+                  if (!employee) return null
+
+                  return (
+                    <div key={employeeId} className="bg-orange-900/30 border border-orange-500/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-orange-100">
+                            {employee.prenom} {employee.nom}
+                          </div>
+                          <div className="text-xs text-orange-300">{employee.job_title}</div>
+                          <div className="text-xs text-orange-400 mt-1">
+                            {status.restaurant
+                              ? `${status.restaurantCode} - ${status.shift || "Pas de shift"}`
+                              : "Pas de restaurant"}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
+                          onClick={() => {
+                            setSelectedEmployee(employeeId)
+                            openPlanner()
+                          }}
+                        >
+                          Assigner
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Weekly Schedule Table (kept) */}
         <Card className="glass-card backdrop-blur-futuristic border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/70 via-purple-900/60 to-slate-900/70">
@@ -607,85 +790,104 @@ export default function JournalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map((employee: any) => (
-                    <tr key={employee.id} className="border-b hover:bg-white/5 transition-colors">
-                      <td className="p-3">
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="text-xs bg-gradient-to-br from-blue-700/60 to-purple-700/60 text-white">
-                              {employee.name
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate" dir="auto">
-                              {employee.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate" dir="auto">
-                              {employee.position || t.dash}
-                            </p>
-                            <div className="mt-2 flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="bg-emerald-700/30 hover:bg-emerald-700/40 text-emerald-100 border border-emerald-500/30"
-                                onClick={() => {
-                                  setSelectedEmployee(employee.id)
-                                  openPlanner()
-                                }}
-                              >
-                                {t.monthlyPlan}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-slate-300 hover:text-white"
-                                onClick={() => setSelectedEmployee(employee.id)}
-                              >
-                                Sélectionner
-                              </Button>
+                  {employees.map((employee: any) => {
+                    const needsCurrentDayUpdate = currentDayAlerts[employee.id]
+
+                    return (
+                      <tr
+                        key={employee.id}
+                        className={`border-b hover:bg-white/5 transition-colors ${needsCurrentDayUpdate ? "bg-orange-900/20 border-orange-500/30" : ""}`}
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-blue-700/60 to-purple-700/60 text-white">
+                                {employee.name
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center space-x-2">
+                                <p className="font-medium text-sm truncate" dir="auto">
+                                  {employee.name}
+                                </p>
+                                {needsCurrentDayUpdate && (
+                                  <AlertTriangle
+                                    className="w-4 h-4 text-orange-400 flex-shrink-0"
+                                    title="Besoin d'assignation aujourd'hui"
+                                  />
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate" dir="auto">
+                                {employee.position || t.dash}
+                              </p>
+                              <div className="mt-2 flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className={`${needsCurrentDayUpdate ? "bg-orange-700/40 hover:bg-orange-700/50 text-orange-100 border border-orange-500/40" : "bg-emerald-700/30 hover:bg-emerald-700/40 text-emerald-100 border border-emerald-500/30"}`}
+                                  onClick={() => {
+                                    setSelectedEmployee(employee.id)
+                                    openPlanner()
+                                  }}
+                                >
+                                  {needsCurrentDayUpdate ? "Assigner Urgent" : t.monthlyPlan}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-slate-300 hover:text-white"
+                                  onClick={() => setSelectedEmployee(employee.id)}
+                                >
+                                  {t.weeklyPlan}
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      {daysOfWeek.map((day) => {
-                        const sched = getEmployeeSchedule(employee.id, day.key)
-                        const shiftValue = sched?.shift as Dict["shifts"][number]["value"] | undefined
-                        const label = shifts.find((s) => s.value === shiftValue)?.label ?? sched?.shift ?? t.dash
-                        return (
-                          <td key={day.key} className="p-3 text-center">
-                            {sched ? (
-                              <div className="flex flex-col items-center gap-1">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs px-2 py-1 rounded-lg shadow-sm border-0 ${
-                                    shiftValue === "Matin"
-                                      ? "bg-blue-700/30 text-blue-200"
-                                      : shiftValue === "Soirée"
-                                        ? "bg-purple-700/30 text-purple-200"
-                                        : shiftValue === "Doublage"
-                                          ? "bg-orange-700/30 text-orange-200"
-                                          : "bg-slate-700/30 text-slate-200"
-                                  }`}
-                                >
-                                  <span dir="auto">{label.split(" ")[0]}</span>
-                                </Badge>
-                                <span className="text-xs text-muted-foreground" dir="auto">
-                                  {sched.job || t.dash}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground" dir="auto">
-                                {t.dash}
-                              </span>
-                            )}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
+                        </td>
+                        {daysOfWeek.map((day) => {
+                          const schedule = getEmployeeSchedule(employee.id, day.key)
+                          const isToday =
+                            day.key === new Date().toLocaleDateString("en-CA").split("-")[2].toLowerCase().slice(0, 3)
+                          const todayNeedsUpdate = isToday && needsCurrentDayUpdate
+
+                          return (
+                            <td
+                              key={day.key}
+                              className={`text-center p-3 ${todayNeedsUpdate ? "bg-orange-900/30 border border-orange-500/30 rounded" : ""}`}
+                            >
+                              {schedule ? (
+                                <div className="space-y-1">
+                                  <Badge
+                                    variant={schedule.shift === "Repos" ? "outline" : "default"}
+                                    className={`text-xs ${
+                                      schedule.shift === "Matin"
+                                        ? "bg-blue-700/30 text-blue-200"
+                                        : schedule.shift === "Soirée"
+                                          ? "bg-purple-700/30 text-purple-200"
+                                          : schedule.shift === "Doublage"
+                                            ? "bg-orange-700/30 text-orange-200"
+                                            : "bg-slate-700/30 text-slate-200"
+                                    }`}
+                                  >
+                                    {schedule.shift}
+                                  </Badge>
+                                  {schedule.job && <div className="text-xs text-muted-foreground">{schedule.job}</div>}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">{t.dash}</span>
+                              )}
+                              {isToday && employee.location && (
+                                <div className="text-xs text-blue-300 mt-1">{getAbbrev(employee.location.name, 3)}</div>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -749,7 +951,7 @@ export default function JournalPage() {
               </Select>
               {/* Quick access to monthly planner */}
               {selectedEmployee && (
-                <div className="mt-4">
+                <div className="mt-4 flex gap-2">
                   <Button
                     onClick={openPlanner}
                     className="btn-restaurant bg-emerald-700/40 hover:bg-emerald-700/50 border border-emerald-500/30"
@@ -757,8 +959,102 @@ export default function JournalPage() {
                     <Calendar className="w-4 h-4 mr-2" />
                     {t.monthlyPlan}
                   </Button>
+            
                 </div>
               )}
+              {/* View Plans Dialog */}
+              <Dialog
+                open={viewPlansOpen}
+                onOpenChange={async (open) => {
+                  setViewPlansOpen(open)
+                  if (open && selectedEmployee) {
+                    setPlansLoading(true)
+                    // Fetch all plans for the last 6 months in a single API call
+                    const now = new Date()
+                    const startMonth = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+                    const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+                    const start = startMonth.toISOString().slice(0, 10)
+                    const end = endMonth.toISOString().slice(0, 10)
+                    try {
+                      const res = await getRange({ variables: { employee_id: selectedEmployee, start, end } })
+                      const scheds = res.data?.workSchedulesRange ?? []
+                      // Group by month
+                      const plansByMonth: Record<string, any[]> = {}
+                      scheds.forEach((s: any) => {
+                        const key = typeof s.date === "string" ? s.date.slice(0, 7) : ""
+                        if (!key) return
+                        if (!plansByMonth[key]) plansByMonth[key] = []
+                        plansByMonth[key].push(s)
+                      })
+                      // Build monthlyPlans array sorted by most recent month first
+                      const months = Object.keys(plansByMonth).sort((a, b) => b.localeCompare(a))
+                      const plans = months.map((ym) => {
+                        const [year, month] = ym.split("-").map(Number)
+                        const monthDate = new Date(year, month - 1, 1)
+                        return {
+                          ym,
+                          label: new Intl.DateTimeFormat(lang === "ar" ? "ar-TN" : "fr-FR", {
+                            month: "long",
+                            year: "numeric",
+                          }).format(monthDate),
+                          scheds: plansByMonth[ym],
+                        }
+                      })
+                      setMonthlyPlans(plans)
+                    } catch {
+                      setMonthlyPlans([])
+                    }
+                    setPlansLoading(false)
+                  }
+                }}
+              >
+                <DialogContent className="max-w-2xl w-full glass-card bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-900/95 border border-white/10 text-white">
+                  <DialogHeader>
+                    <DialogTitle>Plannings sauvegardés</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2 min-h-[120px]">
+                    {plansLoading ? (
+                      <div className="text-center text-slate-400 py-8">Chargement...</div>
+                    ) : monthlyPlans.length === 0 ? (
+                      <div className="text-center text-slate-400 py-8">Aucun planning trouvé pour cet employé.</div>
+                    ) : (
+                      monthlyPlans.map((plan) => (
+                        <div key={plan.ym} className="flex items-center justify-between bg-slate-800/60 rounded p-2">
+                          <div>
+                            <span className="font-mono text-slate-200">{plan.label}</span>
+                            <span className="ml-2 text-slate-400">({plan.scheds.length} shifts)</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-indigo-700 hover:bg-indigo-800"
+                            onClick={() => {
+                              // Load this plan into planner for editing
+                              const prefilled: Record<string, DayAssignment> = {}
+                              plan.scheds.forEach((s: any) => {
+                                if (s?.date) {
+                                  const key = normalizeDateKey(s.date)
+                                  if (!key) return
+                                  prefilled[key] = {
+                                    shift: (s.shift_type as DayAssignment["shift"]) ?? "Repos",
+                                    location_id: s.location_id ?? undefined,
+                                    job_position: s.job_position ?? undefined,
+                                  }
+                                }
+                              })
+                              setMonthEdits(prefilled)
+                              setPlannerMonth(new Date(plan.ym + "-01"))
+                              setViewPlansOpen(false)
+                              setPlannerOpen(true)
+                            }}
+                          >
+                            Modifier
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </div>
@@ -951,6 +1247,14 @@ export default function JournalPage() {
                   : t.monthlyPlan}
               </DialogTitle>
               <DialogDescription>{t.monthlyPlanSubtitle(monthLabel)}</DialogDescription>
+              {selectedEmployee && currentDayAlerts[selectedEmployee] && (
+                <div className="flex items-center space-x-2 bg-orange-600/20 border border-orange-500/30 rounded-lg px-3 py-2 mt-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-400" />
+                  <span className="text-sm text-orange-200">
+                    Cet employé a besoin d'une assignation restaurant pour aujourd'hui
+                  </span>
+                </div>
+              )}
             </DialogHeader>
 
             <div className="px-4 sm:px-6 py-4 space-y-4">
@@ -1003,14 +1307,38 @@ export default function JournalPage() {
                       const shift = assign?.shift
                       const isDouble = shift === "Doublage"
                       const isSimple = shift === "Matin" || shift === "Soirée"
+
+                      const isToday = ds === ymd(new Date())
+                      const todayNeedsUpdate = isToday && selectedEmployee && currentDayAlerts[selectedEmployee]
+
                       return (
                         <Popover key={ds} open={editingDay === ds} onOpenChange={(o) => setEditingDay(o ? ds : null)}>
                           <PopoverTrigger asChild>
                             <button
-                              className="relative rounded-2xl px-2.5 pt-2.5 pb-6 sm:px-3 sm:pt-3 sm:pb-7 text-left bg-white/5 hover:bg-white/10 border border-white/10 transition-colors h-20 sm:h-28"
+                              className={`relative rounded-2xl px-2.5 pt-2.5 pb-6 sm:px-3 sm:pt-3 sm:pb-7 text-left transition-colors h-20 sm:h-28 ${
+                                todayNeedsUpdate
+                                  ? "bg-orange-600/20 hover:bg-orange-600/30 border-2 border-orange-500/50 animate-pulse"
+                                  : isToday
+                                    ? "bg-blue-600/20 hover:bg-blue-600/30 border-2 border-blue-500/50"
+                                    : "bg-white/5 hover:bg-white/10 border border-white/10"
+                              }`}
                               onClick={() => setEditingDay(ds)}
                             >
-                              <span className="text-[13px] sm:text-sm text-slate-200 font-medium">{d.getDate()}</span>
+                              <span
+                                className={`text-[13px] sm:text-sm font-medium ${
+                                  todayNeedsUpdate ? "text-orange-200" : isToday ? "text-blue-200" : "text-slate-200"
+                                }`}
+                              >
+                                {d.getDate()}
+                              </span>
+
+                              {isToday && (
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-400 rounded-full"></span>
+                              )}
+
+                              {todayNeedsUpdate && (
+                                <AlertTriangle className="absolute top-1 right-1 w-3 h-3 text-orange-400" />
+                              )}
 
                               {/* Points */}
                               <div className="absolute left-2 bottom-2 flex flex-col items-start gap-0.5">
@@ -1024,9 +1352,9 @@ export default function JournalPage() {
                                 ) : null}
                               </div>
 
-                              {/* Compact location badge */}
-                              {assign?.location_id &&
-                                (() => {
+                              {(() => {
+                                // Show location abbreviation for any assignment
+                                if (assign?.location_id) {
                                   const ln = allLocationsList.find((l) => l.id === assign.location_id)?.name ?? ""
                                   const ab = ln ? getAbbrev(ln, 3) : ""
                                   return ln ? (
@@ -1038,7 +1366,23 @@ export default function JournalPage() {
                                       {ab}
                                     </span>
                                   ) : null
-                                })()}
+                                }
+
+                                // Show "REP" for rest days (Repos)
+                                if (assign?.shift_type === "Repos") {
+                                  return (
+                                    <span
+                                      className="absolute right-2 bottom-2 text-[10px] px-1.5 py-0.5 rounded-md bg-slate-700/70 text-slate-300 border border-white/10"
+                                      title="Repos"
+                                      aria-label="Jour de repos"
+                                    >
+                                      REP
+                                    </span>
+                                  )
+                                }
+
+                                return null
+                              })()}
                             </button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[96vw] max-w-[360px] sm:w-80 p-0 bg-gradient-to-br from-slate-900/95 to-slate-900/95 border border-white/10 text-white">
@@ -1194,11 +1538,11 @@ export default function JournalPage() {
       </div>
 
       <style jsx>{`
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-      }
-    `}</style>
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   )
 }

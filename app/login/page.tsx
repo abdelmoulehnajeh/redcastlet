@@ -99,7 +99,7 @@ export default function LoginPage() {
       managerCreds: "manager1 / manager123",
       employeeCreds: "jean.dupont / employee123",
       securedBy: "محمي بواسطة تقنية ريد كاستل",
-      errorWrong: "اسم المستخدم أو كلمة المرور غير صحيحة",
+      errorWrong: "اسم المستخدم أو كلمة ��لمرور غير صحيحة",
       errorLogin: "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.",
       french: "فرنسي",
       arabic: "العربية"

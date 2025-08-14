@@ -5,8 +5,7 @@ import { Pool } from "pg"
 
 // Database connection
 const pool = new Pool({
-  connectionString:
-    "postgresql://neondb_owner:npg_Wf7HhZGIQDX0@ep-curly-tooth-ad2f1fpo-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  connectionString: "postgresql://neondb_owner:npg_PkV0ch8aUzKy@ep-super-shadow-adz5agx9-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
 })
 
 // Ensure payroll and notifications tables exist
@@ -212,7 +211,9 @@ type WorkSchedule {
   job_position: String
   is_working: Boolean!
   created_at: String
+  location_id: String
   employee: Employee
+  location: Location
 }
 
 type Contract {
@@ -355,6 +356,7 @@ type Mutation {
     shift_type: String!
     job_position: String!
     is_working: Boolean!
+    location_id: ID!
   ): WorkSchedule
   updateWorkSchedule(
     id: ID!
@@ -386,7 +388,7 @@ type Mutation {
     email: String!
     nom: String!
     prenom: String!
-    telephone: String!
+    telephone: String
     job_title: String!
     salaire: Float
     role: String
@@ -420,6 +422,29 @@ type Mutation {
   markNotificationSeen(id: ID!): Boolean!
   markAllNotificationsSeen(user_id: ID!): Boolean!
   notifyPlanningForEmployee(employee_id: ID!, month: String!): Boolean!
+  updateEmployeeProfile(
+    id: ID!
+    nom: String
+    prenom: String
+    email: String
+    telephone: String
+  ): Employee
+  updateUserPassword(
+    employee_id: ID!
+    currentPassword: String!
+    newPassword: String!
+  ): User
+}
+
+input WorkScheduleInput {
+  employee_id: String!
+  date: String!
+  start_time: String
+  end_time: String
+  shift_type: String!
+  job_position: String
+  is_working: Boolean!
+  location_id: String
 }
 `
 
@@ -627,42 +652,42 @@ const resolvers = {
         return null
       }
     },
-    workSchedules: async (_: any, { employee_id, date }: { employee_id?: string; date?: string }) => {
+    workSchedules: async (_: any, { employee_id, date }: any) => {
       try {
         let query = `
-        SELECT ws.*, e.nom, e.prenom
-        FROM work_schedules ws
-        LEFT JOIN employees e ON ws.employee_id = e.id
-      `
+          SELECT ws.*, l.name as location_name, l.address as location_address 
+          FROM work_schedules ws
+          LEFT JOIN locations l ON ws.location_id = l.id
+          WHERE 1=1
+        `
         const params: any[] = []
-        const conditions: string[] = []
+
         if (employee_id) {
-          conditions.push(`ws.employee_id = $${params.length + 1}`)
           params.push(employee_id)
+          query += ` AND ws.employee_id = $${params.length}`
         }
+
         if (date) {
-          conditions.push(`ws.date = $${params.length + 1}`)
           params.push(date)
+          query += ` AND ws.date = $${params.length}`
         }
-        if (conditions.length > 0) {
-          query += " WHERE " + conditions.join(" AND ")
-        }
-        query += " ORDER BY ws.date DESC, ws.created_at DESC"
+
+        query += " ORDER BY ws.date DESC"
 
         const result = await pool.query(query, params)
         return result.rows.map((row) => ({
           ...row,
-          employee: row.nom
+          location: row.location_name
             ? {
-                id: row.employee_id,
-                nom: row.nom,
-                prenom: row.prenom,
+                id: row.location_id,
+                name: row.location_name,
+                address: row.location_address,
               }
             : null,
         }))
       } catch (error) {
         console.error("Error fetching work schedules:", error)
-        return []
+        throw new Error("Failed to fetch work schedules")
       }
     },
     workSchedulesRange: async (
@@ -1309,20 +1334,32 @@ const resolvers = {
     },
     createWorkSchedule: async (_: any, args: any) => {
       try {
-        const { employee_id, date, start_time, end_time, shift_type, job_position, is_working } = args
+        const { employee_id, date, start_time, end_time, shift_type, job_position, is_working, location_id } = args
         try {
           const result = await pool.query(
-            "INSERT INTO work_schedules (employee_id, date, start_time, end_time, shift_type, job_position, is_working) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-            [employee_id, date, start_time, end_time, shift_type, job_position, is_working],
+            "INSERT INTO work_schedules (employee_id, date, start_time, end_time, shift_type, job_position, is_working, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
+            [employee_id, date, start_time, end_time, shift_type, job_position, is_working, location_id],
           )
-          return result.rows[0]
+
+          // Fetch location details
+          const locationResult = await pool.query("SELECT * FROM locations WHERE id = $1", [location_id])
+          const schedule = result.rows[0]
+          schedule.location = locationResult.rows[0] || null
+
+          return schedule
         } catch (error: any) {
           if (error.code === "23505") {
             const updateResult = await pool.query(
-              "UPDATE work_schedules SET start_time = $1, end_time = $2, shift_type = $3, job_position = $4, is_working = $5 WHERE employee_id = $6 AND date = $7 RETURNING *",
-              [start_time, end_time, shift_type, job_position, is_working, employee_id, date],
+              "UPDATE work_schedules SET start_time = $1, end_time = $2, shift_type = $3, job_position = $4, is_working = $5, location_id = $6 WHERE employee_id = $7 AND date = $8 RETURNING *",
+              [start_time, end_time, shift_type, job_position, is_working, location_id, employee_id, date],
             )
-            return updateResult.rows[0]
+
+            // Fetch location details
+            const locationResult = await pool.query("SELECT * FROM locations WHERE id = $1", [location_id])
+            const schedule = updateResult.rows[0]
+            schedule.location = locationResult.rows[0] || null
+
+            return schedule
           }
           console.error("Error creating work schedule:", error)
           throw new Error("Failed to create work schedule")
@@ -1342,7 +1379,15 @@ const resolvers = {
         const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(", ")
         const query = `UPDATE work_schedules SET ${setClause} WHERE id = $1 RETURNING *`
         const result = await pool.query(query, [id, ...values])
-        return result.rows[0]
+
+        // Fetch location details if location_id was updated
+        const schedule = result.rows[0]
+        if (schedule.location_id) {
+          const locationResult = await pool.query("SELECT * FROM locations WHERE id = $1", [schedule.location_id])
+          schedule.location = locationResult.rows[0] || null
+        }
+
+        return schedule
       } catch (error) {
         console.error("Error updating work schedule:", error)
         throw new Error("Failed to update work schedule")
@@ -1605,6 +1650,92 @@ const resolvers = {
         return false
       }
     },
+    updateEmployeeProfile: async (_: any, { id, nom, prenom, email, telephone }: any) => {
+      try {
+        const beforeRes = await pool.query("SELECT * FROM employees WHERE id = $1", [id])
+        if (beforeRes.rows.length === 0) throw new Error("Employee not found")
+
+        const updateFields = []
+        const updateValues = []
+        let paramIndex = 2
+
+        if (nom !== undefined) {
+          updateFields.push(`nom = $${paramIndex}`)
+          updateValues.push(nom)
+          paramIndex++
+        }
+        if (prenom !== undefined) {
+          updateFields.push(`prenom = $${paramIndex}`)
+          updateValues.push(prenom)
+          paramIndex++
+        }
+        if (email !== undefined) {
+          updateFields.push(`email = $${paramIndex}`)
+          updateValues.push(email)
+          paramIndex++
+        }
+        if (telephone !== undefined) {
+          updateFields.push(`telephone = $${paramIndex}`)
+          updateValues.push(telephone)
+          paramIndex++
+        }
+
+        if (updateFields.length === 0) {
+          return beforeRes.rows[0]
+        }
+
+        const query = `UPDATE employees SET ${updateFields.join(", ")} WHERE id = $1 RETURNING *`
+        const result = await pool.query(query, [id, ...updateValues])
+
+        if (result.rows.length === 0) throw new Error("Employee not found after update")
+
+        const employee = result.rows[0]
+
+        await logRecentActivity({
+          title: "Profil mis à jour",
+          description: `${employee.prenom} ${employee.nom} a mis à jour son profil`,
+          type: "employee",
+          urgent: false,
+        })
+
+        return employee
+      } catch (error) {
+        console.error("Error updating employee profile:", error)
+        throw new Error("Failed to update employee profile")
+      }
+    },
+    updateUserPassword: async (_: any, { employee_id, currentPassword, newPassword }: any) => {
+      try {
+        // First verify current password
+        const userRes = await pool.query("SELECT * FROM users WHERE employee_id = $1", [employee_id])
+        if (userRes.rows.length === 0) throw new Error("User not found")
+
+        const user = userRes.rows[0]
+        if (user.password !== currentPassword) {
+          throw new Error("Current password is incorrect")
+        }
+
+        // Update password
+        const result = await pool.query(
+          "UPDATE users SET password = $1 WHERE employee_id = $2 RETURNING id, username",
+          [newPassword, employee_id],
+        )
+
+        if (result.rows.length === 0) throw new Error("Failed to update password")
+
+        await logRecentActivity({
+          title: "Mot de passe modifié",
+          description: `L'utilisateur ${user.username} a changé son mot de passe`,
+          type: "security",
+          urgent: false,
+        })
+
+        return result.rows[0]
+      } catch (error) {
+        console.error("Error updating user password:", error)
+        throw new Error("Failed to update password")
+      }
+    },
   },
   Employee: {
     user: async (parent: any) => {
@@ -1613,6 +1744,27 @@ const resolvers = {
         return res.rows[0] || null
       } catch (e) {
         console.error("Employee.user resolver failed:", e)
+        return null
+      }
+    },
+  },
+  WorkSchedule: {
+    location: async (parent: any) => {
+      try {
+        if (!parent.location_id) return null
+        const res = await pool.query("SELECT * FROM locations WHERE id = $1", [parent.location_id])
+        return res.rows[0] || null
+      } catch (e) {
+        console.error("WorkSchedule.location resolver failed:", e)
+        return null
+      }
+    },
+    employee: async (parent: any) => {
+      try {
+        const res = await pool.query("SELECT * FROM employees WHERE id = $1", [parent.employee_id])
+        return res.rows[0] || null
+      } catch (e) {
+        console.error("WorkSchedule.employee resolver failed:", e)
         return null
       }
     },

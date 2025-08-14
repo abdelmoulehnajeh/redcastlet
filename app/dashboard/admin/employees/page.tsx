@@ -49,10 +49,14 @@ import {
   PlusCircle,
   Eye,
   EyeOff,
+  Mail,
+  Phone,
+  Building,
 } from "lucide-react"
 
-import { GET_EMPLOYEES, GET_LOCATIONS, CREATE_EMPLOYEE, DELETE_EMPLOYEE } from "@/lib/graphql-queries"
+import { GET_ADMIN_DATA, CREATE_EMPLOYEE, DELETE_EMPLOYEE } from "@/lib/graphql-queries"
 import { toast } from "sonner"
+import { useAuth } from "@/lib/auth-context"
 
 type Lang = "fr" | "ar"
 
@@ -119,6 +123,11 @@ type Dict = {
   fillRequired: string
   revealPassword: string
   hidePassword: string
+  optional: string
+  requiredFields: string
+  optionalInfo: string
+  idLabel: string
+  notDefined: string
 }
 
 const translations: Record<Lang, Dict> = {
@@ -154,17 +163,17 @@ const translations: Record<Lang, Dict> = {
     noneFound: "Aucun employé trouvé",
     createTitle: "Créer un nouvel employé",
     createDesc: "Remplissez les informations de base pour créer un compte employé.",
-    labelLastName: "Nom",
-    labelFirstName: "Prénom",
+    labelLastName: "Nom *",
+    labelFirstName: "Prénom *",
     labelUsername: "Nom d'utilisateur",
     labelEmail: "Email",
     labelPhone: "Téléphone",
-    labelJob: "Poste",
+    labelJob: "Poste *",
     jobPlaceholder: "serveur, etc ...",
-    labelSalary: "Salaire (DT)",
-    labelRestaurant: "Restaurant",
+    labelSalary: "Salaire (DT) *",
+    labelRestaurant: "Restaurant *",
     selectRestaurant: "Sélectionner un restaurant",
-    labelRole: "Rôle",
+    labelRole: "Rôle *",
     selectRole: "Sélectionner un rôle",
     roleEmployee: "Employé",
     roleManager: "Manager",
@@ -185,9 +194,14 @@ const translations: Record<Lang, Dict> = {
     updatedErr: "Erreur lors de la mise à jour",
     deletedOk: "Employé supprimé avec succès",
     deletedErr: "Erreur lors de la suppression",
-    fillRequired: "Veuillez remplir tous les champs obligatoires.",
+    fillRequired: "Veuillez remplir tous les champs obligatoires (*)",
     revealPassword: "Afficher le mot de passe",
     hidePassword: "Masquer le mot de passe",
+    optional: "(optionnel)",
+    requiredFields: "Veuillez remplir tous les champs obligatoires (*)",
+    optionalInfo: "Informations optionnelles",
+    idLabel: "ID:",
+    notDefined: "Non défini",
   },
   ar: {
     headerTitle: "إدارة الموظفين",
@@ -221,17 +235,17 @@ const translations: Record<Lang, Dict> = {
     noneFound: "لا يوجد موظفون",
     createTitle: "إنشاء موظف جديد",
     createDesc: "املأ المعلومات الأساسية لإنشاء حساب موظف.",
-    labelLastName: "اسم العائلة",
-    labelFirstName: "الاسم الأول",
+    labelLastName: "اسم العائلة *",
+    labelFirstName: "الاسم الأول *",
     labelUsername: "اسم المستخدم",
     labelEmail: "البريد الإلكتروني",
     labelPhone: "الهاتف",
-    labelJob: "المنصب",
+    labelJob: "المنصب *",
     jobPlaceholder: "server، إلخ ...",
-    labelSalary: "الراتب (DT)",
-    labelRestaurant: "المطعم",
+    labelSalary: "الراتب (DT) *",
+    labelRestaurant: "المطعم *",
     selectRestaurant: "اختر مطعماً",
-    labelRole: "الدور",
+    labelRole: "الدور *",
     selectRole: "اختر دوراً",
     roleEmployee: "موظف",
     roleManager: "مدير",
@@ -250,9 +264,14 @@ const translations: Record<Lang, Dict> = {
     updatedErr: "حدث خطأ أثناء التحديث",
     deletedOk: "تم حذف الموظف بنجاح",
     deletedErr: "حدث خطأ أثناء الحذف",
-    fillRequired: "يرجى تعبئة جميع الحقول المطلوبة.",
+    fillRequired: "يرجى تعبئة جميع الحقول المطلوبة (*)",
     revealPassword: "إظهار كلمة المرور",
     hidePassword: "إخفاء كلمة المرور",
+    optional: "(اختياري)",
+    requiredFields: "يرجى تعبئة جميع الحقول المطلوبة (*)",
+    optionalInfo: "معلومات اختيارية",
+    idLabel: "المعرف:",
+    notDefined: "غير محدد",
   },
 }
 
@@ -315,6 +334,7 @@ function savePostes(list: string[]) {
 }
 
 export default function AdminEmployeesPage() {
+  const { user } = useAuth()
   const lang = useLang()
   const t = translations[lang]
   const locale = lang === "ar" ? "ar" : "fr-FR"
@@ -348,18 +368,29 @@ export default function AdminEmployeesPage() {
     setPostes(loadPostes())
   }, [])
 
+  // Use optimized combined admin data query - single API call for all admin data
   const {
-    data: employeesData,
+    data,
     loading: employeesLoading,
     error,
     refetch: refetchEmployees,
-  } = useQuery<{ employees: Employee[] }>(GET_EMPLOYEES, { fetchPolicy: "cache-and-network" })
-  const { data: locationsData } = useQuery<{ locations: Location[] }>(GET_LOCATIONS)
+  } = useQuery(GET_ADMIN_DATA, {
+    variables: {
+      userId: user?.id,
+      role: user?.role,
+      approvalStatus: "pending",
+    },
+    skip: !user?.id || user?.role !== "admin",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: false,
+  })
+
   const [createEmployee] = useMutation(CREATE_EMPLOYEE)
   const [deleteEmployee] = useMutation(DELETE_EMPLOYEE)
 
-  const employees: Employee[] = employeesData?.employees || []
-  const locations: Location[] = locationsData?.locations || []
+  const employees: Employee[] = data?.employees || []
+  const locations: Location[] = data?.locations || []
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
@@ -376,27 +407,42 @@ export default function AdminEmployeesPage() {
   const fmt = (n: number) => n.toLocaleString(locale)
   const fmtMoney = (n: number) => `${fmt(n)}DT`
 
+  // Updated validation - only require essential fields
   const canCreate = useMemo(() => {
-    return newEmployee.username && newEmployee.email && newEmployee.nom && newEmployee.prenom && newEmployee.job_title
+    return (
+      newEmployee.nom &&
+      newEmployee.prenom &&
+      newEmployee.job_title &&
+      newEmployee.salaire &&
+      newEmployee.location_id &&
+      newEmployee.role
+    )
   }, [newEmployee])
 
   const handleCreateEmployee = async () => {
     if (!canCreate) {
-      toast.error(t.fillRequired)
+      toast.error(t.requiredFields)
       return
     }
+
+    // Generate username if not provided
+    const username = newEmployee.username || `${newEmployee.prenom.toLowerCase()}.${newEmployee.nom.toLowerCase()}`
+
+    // Generate email if not provided
+    const email = newEmployee.email || `${username}@restaurant.local`
+
     try {
       await createEmployee({
         variables: {
-          username: newEmployee.username,
-          email: newEmployee.email,
+          username: username,
+          email: email,
           nom: newEmployee.nom,
           prenom: newEmployee.prenom,
-          telephone: newEmployee.telephone,
+          telephone: newEmployee.telephone || null,
           job_title: newEmployee.job_title,
           role: newEmployee.role,
           salaire: Number.parseFloat(newEmployee.salaire) || 0,
-          location_id: newEmployee.location_id || null,
+          location_id: newEmployee.location_id,
         },
       })
 
@@ -471,26 +517,40 @@ export default function AdminEmployeesPage() {
 
   if (employeesLoading) {
     return (
-      <div className="space-y-6" dir="ltr">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold" dir="auto">
-            {t.headerTitle}
-          </h1>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-              </CardContent>
-            </Card>
+      <div className="min-h-screen relative overflow-hidden" dir="ltr">
+        {/* floating particles */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-30 animate-float"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 6}s`,
+                animationDuration: `${6 + Math.random() * 4}s`,
+              }}
+            />
           ))}
+        </div>
+
+        <div className="space-y-4 sm:space-y-6 p-3 sm:p-6 relative z-20 max-w-screen-xl mx-auto">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white" dir="auto">
+              {t.headerTitle}
+            </h1>
+          </div>
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="h-4 bg-gray-200/20 rounded animate-pulse mb-2"></div>
+                  <div className="h-8 bg-gray-200/20 rounded animate-pulse mb-2"></div>
+                  <div className="h-4 bg-gray-200/20 rounded animate-pulse"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -548,36 +608,36 @@ export default function AdminEmployeesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
             <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
-              <Users className="w-8 h-8 text-blue-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{fmt(employees.length)}</div>
-              <div className="text-xs text-slate-200" dir="auto">
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 mb-2" />
+              <div className="text-xl sm:text-2xl font-bold text-white">{fmt(employees.length)}</div>
+              <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
                 {t.statsTotal}
               </div>
             </CardContent>
           </Card>
           <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
             <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
-              <UserCheck className="w-8 h-8 text-green-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{fmt(activeEmployees)}</div>
-              <div className="text-xs text-slate-200" dir="auto">
+              <UserCheck className="w-6 h-6 sm:w-8 sm:h-8 text-green-400 mb-2" />
+              <div className="text-xl sm:text-2xl font-bold text-white">{fmt(activeEmployees)}</div>
+              <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
                 {t.statsActive}
               </div>
             </CardContent>
           </Card>
           <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
             <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
-              <UserX className="w-8 h-8 text-red-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{fmt(inactiveEmployees)}</div>
-              <div className="text-xs text-slate-200" dir="auto">
+              <UserX className="w-6 h-6 sm:w-8 sm:h-8 text-red-400 mb-2" />
+              <div className="text-xl sm:text-2xl font-bold text-white">{fmt(inactiveEmployees)}</div>
+              <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
                 {t.statsInactive}
               </div>
             </CardContent>
           </Card>
           <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
             <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
-              <DollarSign className="w-8 h-8 text-yellow-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{fmtMoney(avgSalary)}</div>
-              <div className="text-xs text-slate-200" dir="auto">
+              <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400 mb-2" />
+              <div className="text-xl sm:text-2xl font-bold text-white">{fmtMoney(avgSalary)}</div>
+              <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
                 {t.statsAvgSalary}
               </div>
             </CardContent>
@@ -586,8 +646,8 @@ export default function AdminEmployeesPage() {
 
         {/* Filters */}
         <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="text-white" dir="auto">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-white text-lg sm:text-xl" dir="auto">
               {t.filters}
             </CardTitle>
           </CardHeader>
@@ -596,18 +656,18 @@ export default function AdminEmployeesPage() {
               {/* Search Input */}
               <div className="w-full">
                 <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     placeholder={t.searchPlaceholder}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8 glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                    className="pl-10 glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
               {/* Selects */}
-              <div className="flex flex-col xs:flex-row gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <div className="flex-1">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white">
@@ -659,37 +719,37 @@ export default function AdminEmployeesPage() {
         {/* Employees Table */}
         <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
           <CardHeader>
-            <div className="flex items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-white" dir="auto">
+                <CardTitle className="text-white text-lg sm:text-xl" dir="auto">
                   {t.tableTitle}
                 </CardTitle>
-                <CardDescription className="text-slate-200" dir="auto">
+                <CardDescription className="text-slate-200 text-sm sm:text-base" dir="auto">
                   {t.tableSubtitle}
                 </CardDescription>
               </div>
 
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="mt-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0">
+                  <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0">
                     <Plus className="mr-2 h-4 w-4" />
                     <span dir="auto">{t.newEmployee}</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white">
+                <DialogContent className="w-[95vw] max-w-2xl mx-auto glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle className="text-white" dir="auto">
+                    <DialogTitle className="text-white text-lg sm:text-xl" dir="auto">
                       {t.createTitle}
                     </DialogTitle>
-                    <DialogDescription className="text-slate-200" dir="auto">
+                    <DialogDescription className="text-slate-200 text-sm" dir="auto">
                       {t.createDesc}
                     </DialogDescription>
                   </DialogHeader>
 
                   <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="nom" className="text-white" dir="auto">
+                        <Label htmlFor="nom" className="text-white text-sm" dir="auto">
                           {t.labelLastName}
                         </Label>
                         <Input
@@ -701,7 +761,7 @@ export default function AdminEmployeesPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="prenom" className="text-white" dir="auto">
+                        <Label htmlFor="prenom" className="text-white text-sm" dir="auto">
                           {t.labelFirstName}
                         </Label>
                         <Input
@@ -714,132 +774,90 @@ export default function AdminEmployeesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="username" className="text-white" dir="auto">
-                          {t.labelUsername}
-                        </Label>
-                        <Input
-                          id="username"
-                          value={newEmployee.username}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
-                          required
-                          className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-white" dir="auto">
-                          {t.labelEmail}
-                        </Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={newEmployee.email}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                          required
-                          className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="job_title_combobox" className="text-white text-sm" dir="auto">
+                        {t.labelJob}
+                      </Label>
+                      <Popover open={jobPopoverOpen} onOpenChange={setJobPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="job_title_combobox"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={jobPopoverOpen}
+                            className="w-full justify-between glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
+                          >
+                            <span className="truncate" dir="auto">
+                              {newEmployee.job_title ? newEmployee.job_title : t.jobPlaceholder}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder={t.jobPlaceholder}
+                              value={jobSearch}
+                              onValueChange={(v) => setJobSearch(v)}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                <div className="p-3 text-sm text-slate-300">{"Aucun résultat"}</div>
+                              </CommandEmpty>
+                              <CommandGroup heading={<span className="text-xs text-slate-400">{"Suggestions"}</span>}>
+                                {postes
+                                  .filter((p) => p.toLowerCase().includes(jobSearch.toLowerCase()))
+                                  .map((p) => (
+                                    <CommandItem
+                                      key={p}
+                                      value={p}
+                                      onSelect={() => {
+                                        setNewEmployee({ ...newEmployee, job_title: p })
+                                        setJobPopoverOpen(false)
+                                        setJobSearch("")
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          newEmployee.job_title === p ? "opacity-100" : "opacity-0"
+                                        }`}
+                                      />
+                                      <span dir="auto">{p}</span>
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                              {jobSearch.trim() &&
+                                !postes.map((x) => x.toLowerCase()).includes(jobSearch.trim().toLowerCase()) && (
+                                  <CommandGroup>
+                                    <CommandItem
+                                      value={`__create__${jobSearch}`}
+                                      onSelect={() => {
+                                        setNewEmployee({ ...newEmployee, job_title: jobSearch.trim() })
+                                        setJobPopoverOpen(false)
+                                        setJobSearch("")
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      <PlusCircle className="mr-2 h-4 w-4 opacity-80" />
+                                      <span dir="auto">{`Utiliser "${jobSearch.trim()}"`}</span>
+                                    </CommandItem>
+                                  </CommandGroup>
+                                )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {newEmployee.job_title && (
+                        <div className="text-xs text-slate-300" dir="auto">
+                          {newEmployee.job_title}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="telephone" className="text-white" dir="auto">
-                          {t.labelPhone}
-                        </Label>
-                        <Input
-                          id="telephone"
-                          value={newEmployee.telephone}
-                          onChange={(e) => setNewEmployee({ ...newEmployee, telephone: e.target.value })}
-                          className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="job_title_combobox" className="text-white" dir="auto">
-                          {t.labelJob}
-                        </Label>
-                        <Popover open={jobPopoverOpen} onOpenChange={setJobPopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="job_title_combobox"
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={jobPopoverOpen}
-                              className="w-full justify-between glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
-                            >
-                              <span className="truncate" dir="auto">
-                                {newEmployee.job_title ? newEmployee.job_title : t.jobPlaceholder}
-                              </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white">
-                            <Command shouldFilter={false}>
-                              <CommandInput
-                                placeholder={t.jobPlaceholder}
-                                value={jobSearch}
-                                onValueChange={(v) => setJobSearch(v)}
-                              />
-                              <CommandList>
-                                <CommandEmpty>
-                                  <div className="p-3 text-sm text-slate-300">{"Aucun résultat"}</div>
-                                </CommandEmpty>
-                                <CommandGroup heading={<span className="text-xs text-slate-400">{"Suggestions"}</span>}>
-                                  {postes
-                                    .filter((p) => p.toLowerCase().includes(jobSearch.toLowerCase()))
-                                    .map((p) => (
-                                      <CommandItem
-                                        key={p}
-                                        value={p}
-                                        onSelect={() => {
-                                          setNewEmployee({ ...newEmployee, job_title: p })
-                                          setJobPopoverOpen(false)
-                                          setJobSearch("")
-                                        }}
-                                        className="cursor-pointer"
-                                      >
-                                        <Check
-                                          className={`mr-2 h-4 w-4 ${
-                                            newEmployee.job_title === p ? "opacity-100" : "opacity-0"
-                                          }`}
-                                        />
-                                        <span dir="auto">{p}</span>
-                                      </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                {jobSearch.trim() &&
-                                  !postes.map((x) => x.toLowerCase()).includes(jobSearch.trim().toLowerCase()) && (
-                                    <CommandGroup>
-                                      <CommandItem
-                                        value={`__create__${jobSearch}`}
-                                        onSelect={() => {
-                                          setNewEmployee({ ...newEmployee, job_title: jobSearch.trim() })
-                                          setJobPopoverOpen(false)
-                                          setJobSearch("")
-                                        }}
-                                        className="cursor-pointer"
-                                      >
-                                        <PlusCircle className="mr-2 h-4 w-4 opacity-80" />
-                                        <span dir="auto">{`Utiliser "${jobSearch.trim()}"`}</span>
-                                      </CommandItem>
-                                    </CommandGroup>
-                                  )}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        {newEmployee.job_title && (
-                          <div className="text-xs text-slate-300" dir="auto">
-                            {newEmployee.job_title}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="salaire" className="text-white" dir="auto">
+                        <Label htmlFor="salaire" className="text-white text-sm" dir="auto">
                           {t.labelSalary}
                         </Label>
                         <Input
@@ -848,10 +866,11 @@ export default function AdminEmployeesPage() {
                           value={newEmployee.salaire}
                           onChange={(e) => setNewEmployee({ ...newEmployee, salaire: e.target.value })}
                           className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
+                          required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="location" className="text-white" dir="auto">
+                        <Label htmlFor="location" className="text-white text-sm" dir="auto">
                           {t.labelRestaurant}
                         </Label>
                         <Select
@@ -877,7 +896,7 @@ export default function AdminEmployeesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="text-white" dir="auto">
+                      <Label htmlFor="role" className="text-white text-sm" dir="auto">
                         {t.labelRole}
                       </Label>
                       <Select
@@ -903,13 +922,70 @@ export default function AdminEmployeesPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* Optional fields section */}
+                    <div className="border-t border-slate-600/50 pt-4">
+                      <h4 className="text-sm font-medium text-gray-300 mb-3" dir="auto">
+                        {t.optionalInfo} {t.optional}
+                      </h4>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="username" className="text-white text-sm" dir="auto">
+                              {t.labelUsername} {t.optional}
+                            </Label>
+                            <Input
+                              id="username"
+                              value={newEmployee.username}
+                              onChange={(e) => setNewEmployee({ ...newEmployee, username: e.target.value })}
+                              className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
+                            />
+                            <p className="text-xs text-gray-400" dir="auto">
+                              {lang === "ar"
+                                ? "سيتم إنشاؤه تلقائياً إذا ترك فارغاً"
+                                : "Sera généré automatiquement si laissé vide"}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email" className="text-white text-sm" dir="auto">
+                              {t.labelEmail} {t.optional}
+                            </Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={newEmployee.email}
+                              onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                              className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
+                            />
+                            <p className="text-xs text-gray-400" dir="auto">
+                              {lang === "ar"
+                                ? "سيتم إنشاؤه تلقائياً إذا ترك فارغاً"
+                                : "Sera généré automatiquement si laissé vide"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="telephone" className="text-white text-sm" dir="auto">
+                            {t.labelPhone} {t.optional}
+                          </Label>
+                          <Input
+                            id="telephone"
+                            value={newEmployee.telephone}
+                            onChange={(e) => setNewEmployee({ ...newEmployee, telephone: e.target.value })}
+                            className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex justify-end space-x-2">
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                     <Button
                       variant="outline"
                       onClick={() => setIsCreateDialogOpen(false)}
-                      className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50"
+                      className="w-full sm:w-auto glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50"
                     >
                       <span dir="auto">{t.cancel}</span>
                     </Button>
@@ -917,7 +993,7 @@ export default function AdminEmployeesPage() {
                       onClick={handleCreateEmployee}
                       disabled={!canCreate}
                       aria-disabled={!canCreate}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <span dir="auto">{t.createEmployee}</span>
                     </Button>
@@ -927,133 +1003,282 @@ export default function AdminEmployeesPage() {
             </div>
           </CardHeader>
 
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-700">
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colName}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colEmail}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colJob}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colRestaurant}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colSalary}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colStatus}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colUsername}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colPassword}
-                  </TableHead>
-                  <TableHead className="text-slate-200" dir="auto">
-                    {t.colActions}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+          <CardContent className="p-0 sm:p-6">
+            {/* Mobile Card View */}
+            <div className="block lg:hidden space-y-4 p-4">
+              {filteredEmployees.map((employee) => {
+                const username = employee.user?.username || "—"
+                const pwd = employee.user?.password
+                const isRevealed = revealed[employee.id] === true
+                const masked = pwd ? "•".repeat(Math.max(pwd.length, 6)) : "—"
+                return (
+                  <div
+                    key={employee.id}
+                    className="bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-2xl p-4 hover:bg-slate-700/50 transition-all duration-300"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white text-base" dir="auto">
+                          {employee.prenom} {employee.nom}
+                        </h3>
+                        <p className="text-sm text-gray-400">
+                          {t.idLabel} {employee.id}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 ml-2">
+                        <Link href={`/dashboard/admin/employee/${employee.id}`}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-blue-400 hover:bg-slate-700/50 hover:text-blue-300 p-2"
+                            aria-label="Edit"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </Link>
 
-              <TableBody>
-                {filteredEmployees.map((employee) => {
-                  const username = employee.user?.username || "—"
-                  const pwd = employee.user?.password
-                  const isRevealed = revealed[employee.id] === true
-                  const masked = pwd ? "•".repeat(Math.max(pwd.length, 6)) : "—"
-                  return (
-                    <TableRow key={employee.id} className="border-slate-700 hover:bg-slate-800/20">
-                      <TableCell className="font-medium text-white" dir="auto">
-                        {employee.prenom} {employee.nom}
-                      </TableCell>
-                      <TableCell className="text-slate-200">{employee.email}</TableCell>
-                      <TableCell className="text-slate-200" dir="auto">
-                        {employee.job_title}
-                      </TableCell>
-                      <TableCell className="text-slate-200" dir="auto">
-                        {employee.location ? employee.location.name : t.notAssigned}
-                      </TableCell>
-                      <TableCell className="text-slate-200">{fmtMoney(employee.salaire || 0)}</TableCell>
-                      <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                      <TableCell className="text-slate-200">{username}</TableCell>
-                      <TableCell className="text-slate-200" dir="auto">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-red-400 hover:bg-slate-700/50 hover:text-red-300 p-2"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="w-[95vw] max-w-md mx-auto glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-white" dir="auto">
+                                {t.deleteTitle}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription className="text-slate-200" dir="auto">
+                                {t.deleteDesc(employee.prenom, employee.nom)}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+                              <AlertDialogCancel className="w-full sm:w-auto glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                                <span dir="auto">{t.cancel}</span>
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteEmployee(employee.id)}
+                                className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-0"
+                              >
+                                <span dir="auto">{t.deleteConfirm}</span>
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate" dir="auto">
+                            {employee.email}
+                          </span>
+                        </div>
+                        {employee.telephone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-300">
+                            <Phone className="h-3 w-3 flex-shrink-0" />
+                            <span>{employee.telephone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{t.colJob}</span>
+                        <span className="text-sm text-gray-300 font-medium" dir="auto">
+                          {employee.job_title || t.notDefined}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{t.colRestaurant}</span>
+                        {employee.location ? (
+                          <div className="flex items-center gap-1 text-sm text-gray-300" dir="auto">
+                            <Building className="h-3 w-3" />
+                            <span className="truncate max-w-[150px]">{employee.location.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-500">{t.notAssigned}</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{t.colSalary}</span>
+                        <span className="text-sm text-gray-300 font-medium">
+                          {employee.salaire ? `${employee.salaire}DT` : t.notDefined}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{t.colStatus}</span>
+                        {getStatusBadge(employee.status)}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{t.colUsername}</span>
+                        <span className="text-sm text-gray-300 font-mono">{username}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{t.colPassword}</span>
                         {!pwd ? (
-                          <span>{"—"}</span>
+                          <span className="text-sm text-gray-300">{"—"}</span>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span className="font-mono">{isRevealed ? pwd : masked}</span>
+                            <span className="font-mono text-sm text-gray-300">{isRevealed ? pwd : masked}</span>
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-7 w-7 glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50"
+                              className="h-6 w-6 glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50"
                               onClick={() => setRevealed((prev) => ({ ...prev, [employee.id]: !prev[employee.id] }))}
                               aria-label={isRevealed ? t.hidePassword : t.revealPassword}
                               title={isRevealed ? t.hidePassword : t.revealPassword}
                             >
-                              {isRevealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              {isRevealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                             </Button>
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Link href={`/dashboard/admin/employee/${employee.id}`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-blue-400 hover:bg-slate-700/50 hover:text-blue-300"
-                              aria-label="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
 
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-700">
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colName}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colEmail}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colJob}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colRestaurant}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colSalary}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colStatus}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colUsername}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colPassword}
+                    </TableHead>
+                    <TableHead className="text-slate-200" dir="auto">
+                      {t.colActions}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {filteredEmployees.map((employee) => {
+                    const username = employee.user?.username || "—"
+                    const pwd = employee.user?.password
+                    const isRevealed = revealed[employee.id] === true
+                    const masked = pwd ? "•".repeat(Math.max(pwd.length, 6)) : "—"
+                    return (
+                      <TableRow key={employee.id} className="border-slate-700 hover:bg-slate-800/20">
+                        <TableCell className="font-medium text-white" dir="auto">
+                          {employee.prenom} {employee.nom}
+                        </TableCell>
+                        <TableCell className="text-slate-200">{employee.email}</TableCell>
+                        <TableCell className="text-slate-200" dir="auto">
+                          {employee.job_title}
+                        </TableCell>
+                        <TableCell className="text-slate-200" dir="auto">
+                          {employee.location ? employee.location.name : t.notAssigned}
+                        </TableCell>
+                        <TableCell className="text-slate-200">{fmtMoney(employee.salaire || 0)}</TableCell>
+                        <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                        <TableCell className="text-slate-200">{username}</TableCell>
+                        <TableCell className="text-slate-200" dir="auto">
+                          {!pwd ? (
+                            <span>{"—"}</span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono">{isRevealed ? pwd : masked}</span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50"
+                                onClick={() => setRevealed((prev) => ({ ...prev, [employee.id]: !prev[employee.id] }))}
+                                aria-label={isRevealed ? t.hidePassword : t.revealPassword}
+                                title={isRevealed ? t.hidePassword : t.revealPassword}
+                              >
+                                {isRevealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Link href={`/dashboard/admin/employee/${employee.id}`}>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-red-400 hover:bg-slate-700/50 hover:text-red-300"
-                                aria-label="Delete"
+                                className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-blue-400 hover:bg-slate-700/50 hover:text-blue-300"
+                                aria-label="Edit"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Edit className="h-4 w-4" />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-white" dir="auto">
-                                  {t.deleteTitle}
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className="text-slate-200" dir="auto">
-                                  {t.deleteDesc(employee.prenom, employee.nom)}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                                  <span dir="auto">{t.cancel}</span>
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteEmployee(employee.id)}
-                                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-0"
+                            </Link>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-red-400 hover:bg-slate-700/50 hover:text-red-300"
+                                  aria-label="Delete"
                                 >
-                                  <span dir="auto">{t.deleteConfirm}</span>
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 text-white">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-white" dir="auto">
+                                    {t.deleteTitle}
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-slate-200" dir="auto">
+                                    {t.deleteDesc(employee.prenom, employee.nom)}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                                    <span dir="auto">{t.cancel}</span>
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteEmployee(employee.id)}
+                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-0"
+                                  >
+                                    <span dir="auto">{t.deleteConfirm}</span>
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
             {filteredEmployees.length === 0 && (
               <div className="text-center py-8 text-slate-400" dir="auto">
@@ -1077,6 +1302,14 @@ export default function AdminEmployeesPage() {
           100% {
             transform: translateX(100%);
           }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          33% { transform: translateY(-10px) rotate(1deg); }
+          66% { transform: translateY(5px) rotate(-1deg); }
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
         }
       `}</style>
     </div>
