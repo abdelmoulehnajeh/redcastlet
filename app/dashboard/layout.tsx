@@ -10,6 +10,7 @@ import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sid
 import { AppSidebar } from "@/components/AppSidebar"
 
 import { useAuth } from "@/lib/auth-context"
+import { NotificationAudioController } from "@/components/NotificationAudioController"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -29,7 +30,7 @@ import {
   GET_ADMIN_APPROVALS,
 } from "@/lib/graphql-queries"
 
-import { LogOut, User, Settings, Bell, ChevronDown, X, CheckCircle, Calendar } from "lucide-react"
+import { LogOut, User, Settings, Bell, ChevronDown, X, CheckCircle, Calendar, Volume2, VolumeX } from "lucide-react"
 
 type Lang = "fr" | "ar"
 
@@ -181,6 +182,7 @@ type NotificationsContextType = {
   markAllAsSeen: () => Promise<void>
   alertEnabled: boolean
   setAlertEnabled: (enabled: boolean) => void
+  audioBlocked: boolean
 }
 
 const NotificationsContext = createContext<NotificationsContextType | null>(null)
@@ -195,6 +197,7 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unseenCount, setUnseenCount] = useState(0)
+  const [audioBlocked, setAudioBlocked] = useState(false)
 
   // localStorage-backed alert sound toggle
   const [alertEnabled, setAlertEnabledState] = useState<boolean>(() => {
@@ -202,6 +205,7 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
     const v = window.localStorage.getItem("alert")
     return v ? v === "on" : true
   })
+
   const setAlertEnabled = useCallback((enabled: boolean) => {
     setAlertEnabledState(enabled)
     try {
@@ -214,27 +218,52 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Apollo helpers - Use cache-first to reduce API calls
   const [fetchAll] = useLazyQuery(GET_NOTIFICATIONS, {
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: false,
+    errorPolicy: "all",
   })
-  const [markSeenMutation] = useMutation(MARK_NOTIFICATION_SEEN)
-  const [markAllSeenMutation] = useMutation(MARK_ALL_NOTIFICATIONS_SEEN)
+  const [markSeenMutation] = useMutation(MARK_NOTIFICATION_SEEN, {
+    update: (cache, { data }) => {
+      if (data?.markNotificationSeen) {
+        cache.modify({
+          fields: {
+            notifications(existingNotifications = []) {
+              return existingNotifications.map((notif: any) =>
+                notif.id === data.markNotificationSeen.id ? { ...notif, seen: true } : notif,
+              )
+            },
+          },
+        })
+      }
+    },
+  })
+  const [markAllSeenMutation] = useMutation(MARK_ALL_NOTIFICATIONS_SEEN, {
+    update: (cache) => {
+      cache.modify({
+        fields: {
+          notifications(existingNotifications = []) {
+            return existingNotifications.map((notif: any) => ({ ...notif, seen: true }))
+          },
+        },
+      })
+    },
+  })
 
   // Keep unseen count in sync with notifications list
   useEffect(() => {
     setUnseenCount((notifications || []).filter((n) => !n.seen).length)
   }, [notifications])
 
-  // Fetch exactly once per session (not per page reload)
   const hasFetchedRef = useRef(false)
   useEffect(() => {
     if (!user?.id || hasFetchedRef.current) return
     hasFetchedRef.current = true
-    ;(async () => {
+
+    const fetchNotifications = async () => {
       try {
+        console.log("[v0] Fetching notifications for user:", user.id)
         const { data } = await fetchAll({
           variables: {
             user_id: user.id,
@@ -243,11 +272,14 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
           },
         })
         const list: Notification[] = data?.notifications ?? []
+        console.log("[v0] Loaded notifications:", list.length)
         setNotifications(list)
-      } catch {
-        // ignore
+      } catch (error) {
+        console.log("[v0] Error fetching notifications:", error)
       }
-    })()
+    }
+
+    fetchNotifications()
   }, [user?.id, user?.role, fetchAll])
 
   // Cross-tab sync: apply changes without refetching
@@ -316,80 +348,19 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
     markAllAsSeen,
     alertEnabled,
     setAlertEnabled,
+    audioBlocked,
   }
 
   return (
     <NotificationsContext.Provider value={value}>
-      <GlobalNotificationController />
+      <NotificationAudioController
+        unseenCount={unseenCount}
+        alertEnabled={alertEnabled}
+        onAudioBlocked={() => setAudioBlocked(true)}
+      />
       {children}
     </NotificationsContext.Provider>
   )
-}
-
-/* ---------------- Global sound controller (edge-triggered) ---------------- */
-
-function GlobalNotificationController() {
-  const { unseenCount, alertEnabled } = useNotifications()
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const prevUnseenRef = useRef<number>(0)
-  const awaitingGestureRef = useRef(false)
-
-  const tryPlay = useCallback(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio
-      .play()
-      .then(() => {
-        awaitingGestureRef.current = false
-      })
-      .catch(() => {
-        if (!awaitingGestureRef.current) {
-          awaitingGestureRef.current = true
-          const handler = () => {
-            tryPlay()
-            document.removeEventListener("click", handler)
-            document.removeEventListener("keydown", handler)
-            document.removeEventListener("touchstart", handler)
-          }
-          document.addEventListener("click", handler, { passive: true })
-          document.addEventListener("keydown", handler)
-          document.addEventListener("touchstart", handler, { passive: true })
-        }
-      })
-  }, [])
-
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const prev = prevUnseenRef.current
-    const curr = unseenCount
-
-    // Play only if enabled and we go from 0 to > 0
-    if (alertEnabled && prev === 0 && curr > 0) {
-      tryPlay()
-    }
-
-    // Stop when all seen or disabled
-    if (curr === 0 || !alertEnabled) {
-      audio.pause()
-      audio.currentTime = 0
-    }
-
-    prevUnseenRef.current = curr
-  }, [unseenCount, alertEnabled, tryPlay])
-
-  useEffect(() => {
-    return () => {
-      const audio = audioRef.current
-      if (audio) {
-        audio.pause()
-        audio.currentTime = 0
-      }
-    }
-  }, [])
-
-  return <audio ref={audioRef} src="/alert.mp3" preload="auto" loop playsInline className="hidden" />
 }
 
 /* ----------------чера Header ------------------------------ */
@@ -399,18 +370,19 @@ function DashboardHeader() {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const { lang, dict } = useDashboardLang()
-  const { unseenCount, notifications, markAsSeen, markAllAsSeen, alertEnabled, setAlertEnabled } = useNotifications()
+  const { unseenCount, notifications, markAsSeen, markAllAsSeen, alertEnabled, setAlertEnabled, audioBlocked } =
+    useNotifications()
 
   const [mounted, setMounted] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
 
-  // Also keep admin pending approvals count visible (optional) - Use cache-first
   const { data: approvalsData } = useQuery(GET_ADMIN_APPROVALS, {
     variables: { status: "pending" },
     skip: user?.role !== "admin",
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: false,
+    pollInterval: 300000, // Poll every 5 minutes instead of aggressive polling
   })
   const pendingApprovals = approvalsData?.adminApprovals || []
 
@@ -697,10 +669,13 @@ function DashboardHeader() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setAlertEnabled(!alertEnabled)}
-                    className={`hover:text-cyan-100 ${alertEnabled ? "text-cyan-200" : "text-slate-400"}`}
-                    title={dict.enableSound}
+                    className={`hover:text-cyan-100 flex items-center gap-1 ${
+                      alertEnabled ? "text-cyan-200" : "text-slate-400"
+                    } ${audioBlocked ? "text-orange-400" : ""}`}
+                    title={audioBlocked ? dict.soundBlocked : dict.enableSound}
                   >
-                    {dict.enableSound}
+                    {alertEnabled ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
+                    {audioBlocked && <span className="text-xs">!</span>}
                   </Button>
                   <Button
                     variant="ghost"

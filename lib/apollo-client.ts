@@ -131,9 +131,54 @@ export const apolloClient = new ApolloClient({
     },
     mutate: {
       errorPolicy: "all",
-      // After mutations, update cache intelligently
       refetchQueries: "none", // Don't refetch automatically
       awaitRefetchQueries: false,
+      // Add update function to intelligently update cache instead of refetching
+      update: (cache, { data }) => {
+        // Cache will be updated by individual mutation handlers
+      },
     },
   },
 })
+
+export const cacheUpdateHelpers = {
+  // Update employee in cache after mutation
+  updateEmployee: (cache: any, employee: any) => {
+    cache.modify({
+      fields: {
+        employees(existingEmployees = []) {
+          const index = existingEmployees.findIndex((emp: any) => emp.id === employee.id)
+          if (index >= 0) {
+            const newEmployees = [...existingEmployees]
+            newEmployees[index] = employee
+            return newEmployees
+          }
+          return [...existingEmployees, employee]
+        },
+      },
+    })
+  },
+
+  // Update location in cache after mutation
+  updateLocation: (cache: any, location: any) => {
+    cache.modify({
+      fields: {
+        locations(existingLocations = []) {
+          const index = existingLocations.findIndex((loc: any) => loc.id === location.id)
+          if (index >= 0) {
+            const newLocations = [...existingLocations]
+            newLocations[index] = location
+            return newLocations
+          }
+          return [...existingLocations, location]
+        },
+      },
+    })
+  },
+
+  // Remove item from cache after deletion
+  removeFromCache: (cache: any, typename: string, id: string) => {
+    cache.evict({ id: cache.identify({ __typename: typename, id }) })
+    cache.gc()
+  },
+}
