@@ -25,7 +25,7 @@ import {
   Award,
 } from "lucide-react"
 import { useQuery, useMutation } from "@apollo/client"
-import { GET_EMPLOYEE_DETAILS, UPDATE_EMPLOYEE } from "@/lib/graphql-queries"
+import { GET_EMPLOYEE_DETAILS, UPDATE_EMPLOYEE, UPDATE_EMPLOYEE_PROFILE } from "@/lib/graphql-queries"
 import { toast } from "sonner"
 import { useLang } from "@/lib/i18n"
 import { fr, ar as arLocale } from "date-fns/locale"
@@ -74,12 +74,34 @@ export default function EmployeeDetailsPage() {
     },
   })
 
+  const [updateEmployeeProfile] = useMutation(UPDATE_EMPLOYEE_PROFILE, {
+    update(cache, { data: mutationData }) {
+      if (mutationData?.updateEmployeeProfile) {
+        cache.modify({
+          id: cache.identify({ __typename: "Employee", id: employeeId }),
+          fields: {
+            nom: () => mutationData.updateEmployeeProfile.nom,
+            prenom: () => mutationData.updateEmployeeProfile.prenom,
+            email: () => mutationData.updateEmployeeProfile.email,
+            telephone: () => mutationData.updateEmployeeProfile.telephone,
+          },
+        })
+      }
+    },
+  })
+
   const employee = data?.employee
   const schedules = data?.workSchedules || []
   const contracts = data?.contracts || []
 
   const handleEdit = () => {
     setEditData({
+      prenom: employee?.prenom || "",
+      nom: employee?.nom || "",
+      email: employee?.email || "",
+      telephone: employee?.telephone || "",
+      job_title: employee?.job_title || "",
+      status: employee?.status || "active",
       salaire: employee?.salaire || 0,
       prime: employee?.prime || 0,
       infractions: employee?.infractions || 0,
@@ -93,13 +115,34 @@ export default function EmployeeDetailsPage() {
 
   const handleSave = async () => {
     try {
-      // Clamp and normalize numbers
-      const sanitized = Object.fromEntries(
-        Object.entries(editData).map(([k, v]) => [k, Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0]),
+      const personalData = {
+        prenom: editData.prenom?.trim() || "",
+        nom: editData.nom?.trim() || "",
+        email: editData.email?.trim() || "",
+        telephone: editData.telephone?.trim() || "",
+      }
+
+      const financialData = Object.fromEntries(
+        Object.entries({
+          salaire: editData.salaire,
+          prime: editData.prime,
+          infractions: editData.infractions,
+          absence: editData.absence,
+          retard: editData.retard,
+          avance: editData.avance,
+          tenu_de_travail: editData.tenu_de_travail,
+          status: editData.status,
+        }).map(([k, v]) => [k, k === "status" ? v : Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0]),
       )
-      await updateEmployee({
-        variables: { id: employeeId, ...sanitized },
+
+      await updateEmployeeProfile({
+        variables: { id: employeeId, ...personalData },
       })
+
+      await updateEmployee({
+        variables: { id: employeeId, ...financialData },
+      })
+
       toast.success(t("toast_update_success"))
       setIsEditing(false)
     } catch (error) {
@@ -263,48 +306,125 @@ export default function EmployeeDetailsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
-                  {t("full_name")}
+                  {t("first_name", "Prénom")}
                 </Label>
-                <div className="text-sm sm:text-base font-semibold text-foreground" dir="auto">
-                  {employee.prenom} {employee.nom}
-                </div>
+                {isEditing ? (
+                  <Input
+                    type="text"
+                    value={editData.prenom || ""}
+                    onChange={(e) => setEditData({ ...editData, prenom: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder={t("first_name", "Prénom")}
+                  />
+                ) : (
+                  <div className="text-sm sm:text-base font-semibold text-foreground" dir="auto">
+                    {employee.prenom}
+                  </div>
+                )}
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
+                  {t("last_name", "Nom")}
+                </Label>
+                {isEditing ? (
+                  <Input
+                    type="text"
+                    value={editData.nom || ""}
+                    onChange={(e) => setEditData({ ...editData, nom: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder={t("last_name", "Nom")}
+                  />
+                ) : (
+                  <div className="text-sm sm:text-base font-semibold text-foreground" dir="auto">
+                    {employee.nom}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground">Email</Label>
-                <div className="flex items-center space-x-2">
-                  <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm sm:text-base font-semibold text-foreground truncate">{employee.email}</span>
-                </div>
+                {isEditing ? (
+                  <Input
+                    type="email"
+                    value={editData.email || ""}
+                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder="Email"
+                  />
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm sm:text-base font-semibold text-foreground truncate">
+                      {employee.email}
+                    </span>
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
                   {t("Téléphone", "Téléphone")}
                 </Label>
-                <div className="flex items-center space-x-2">
-                  <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm sm:text-base font-semibold text-foreground">{employee.telephone}</span>
-                </div>
+                {isEditing ? (
+                  <Input
+                    type="tel"
+                    value={editData.telephone || ""}
+                    onChange={(e) => setEditData({ ...editData, telephone: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder={t("Téléphone", "Téléphone")}
+                  />
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm sm:text-base font-semibold text-foreground">{employee.telephone}</span>
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
                   {t("job_title")}
                 </Label>
-                <div className="text-sm sm:text-base font-semibold text-foreground" dir="auto">
-                  {employee.job_title}
-                </div>
+                {isEditing ? (
+                  <Input
+                    type="text"
+                    value={editData.job_title || ""}
+                    onChange={(e) => setEditData({ ...editData, job_title: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder={t("job_title")}
+                  />
+                ) : (
+                  <div className="text-sm sm:text-base font-semibold text-foreground" dir="auto">
+                    {employee.job_title}
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
                   {t("status")}
                 </Label>
-                <Badge
-                  variant={employee.status === "active" ? "default" : "secondary"}
-                  className="text-xs sm:text-sm"
-                  dir="auto"
-                >
-                  {employee.status === "active" ? t("active") : t("inactive")}
-                </Badge>
+                {isEditing ? (
+                  <select
+                    value={editData.status || "active"}
+                    onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                    className="w-full text-sm h-8 sm:h-10 px-3 py-1 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                  >
+                    <option value="active">{t("active")}</option>
+                    <option value="inactive">{t("inactive")}</option>
+                  </select>
+                ) : (
+                  <Badge
+                    variant={employee.status === "active" ? "default" : "secondary"}
+                    className="text-xs sm:text-sm"
+                    dir="auto"
+                  >
+                    {employee.status === "active" ? t("active") : t("inactive")}
+                  </Badge>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
                   {t("hire_date")}
