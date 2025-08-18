@@ -536,7 +536,6 @@ export const GET_WORK_SCHEDULES_RANGE = gql`
      location {
        id
        name
-       address
      }
    }
  }
@@ -1100,6 +1099,25 @@ export const UPDATE_USER_PASSWORD = gql`
     ) {
       id
       username
+    }
+  }
+`
+
+// New: Update User Info
+export const UPDATE_USER_INFO = gql`
+  mutation UpdateUserInfo(
+    $employee_id: ID!
+    $username: String
+    $hire_date: String
+  ) {
+    updateUserInfo(
+      employee_id: $employee_id
+      username: $username
+      hire_date: $hire_date
+    ) {
+      id
+      username
+      employee_id
     }
   }
 `

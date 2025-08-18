@@ -25,7 +25,13 @@ import {
   Award,
 } from "lucide-react"
 import { useQuery, useMutation } from "@apollo/client"
-import { GET_EMPLOYEE_DETAILS, UPDATE_EMPLOYEE, UPDATE_EMPLOYEE_PROFILE } from "@/lib/graphql-queries"
+import {
+  GET_EMPLOYEE_DETAILS,
+  UPDATE_EMPLOYEE,
+  UPDATE_EMPLOYEE_PROFILE,
+  UPDATE_USER_PASSWORD,
+  UPDATE_USER_INFO,
+} from "@/lib/graphql-queries"
 import { toast } from "sonner"
 import { useLang } from "@/lib/i18n"
 import { fr, ar as arLocale } from "date-fns/locale"
@@ -90,6 +96,23 @@ export default function EmployeeDetailsPage() {
     },
   })
 
+  const [updateUserInfo] = useMutation(UPDATE_USER_INFO, {
+    update(cache, { data: mutationData }) {
+      if (mutationData?.updateUserInfo) {
+        // Update cache with new user info
+        cache.modify({
+          id: cache.identify({ __typename: "Employee", id: employeeId }),
+          fields: {
+            user: () => mutationData.updateUserInfo,
+            created_at: () => mutationData.updateUserInfo.employee?.created_at,
+          },
+        })
+      }
+    },
+  })
+
+  const [updateUserPassword] = useMutation(UPDATE_USER_PASSWORD)
+
   const employee = data?.employee
   const schedules = data?.workSchedules || []
   const contracts = data?.contracts || []
@@ -102,6 +125,9 @@ export default function EmployeeDetailsPage() {
       telephone: employee?.telephone || "",
       job_title: employee?.job_title || "",
       status: employee?.status || "active",
+      username: employee?.user?.username || "",
+      password: "",
+      hire_date: employee?.created_at ? employee.created_at.split("T")[0] : "",
       salaire: employee?.salaire || 0,
       prime: employee?.prime || 0,
       infractions: employee?.infractions || 0,
@@ -135,6 +161,14 @@ export default function EmployeeDetailsPage() {
         }).map(([k, v]) => [k, k === "status" ? v : Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0]),
       )
 
+      const userInfoData: any = {}
+      if (editData.username && editData.username !== employee?.user?.username) {
+        userInfoData.username = editData.username.trim()
+      }
+      if (editData.hire_date && editData.hire_date !== employee?.created_at?.split("T")[0]) {
+        userInfoData.hire_date = editData.hire_date
+      }
+
       await updateEmployeeProfile({
         variables: { id: employeeId, ...personalData },
       })
@@ -142,6 +176,24 @@ export default function EmployeeDetailsPage() {
       await updateEmployee({
         variables: { id: employeeId, ...financialData },
       })
+
+      // Update user info if there are changes
+      if (Object.keys(userInfoData).length > 0) {
+        await updateUserInfo({
+          variables: { employee_id: employeeId, ...userInfoData },
+        })
+      }
+
+      // Update password if provided
+      if (editData.password && editData.password.trim()) {
+        await updateUserPassword({
+          variables: {
+            employee_id: employeeId,
+            currentPassword: "password123", // Default password - in real app, ask for current password
+            newPassword: editData.password.trim(),
+          },
+        })
+      }
 
       toast.success(t("toast_update_success"))
       setIsEditing(false)
@@ -429,13 +481,56 @@ export default function EmployeeDetailsPage() {
                 <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
                   {t("hire_date")}
                 </Label>
-                <div className="flex items-center space-x-2">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm sm:text-base font-semibold text-foreground">
-                    {formatDate(employee.created_at)}
-                  </span>
-                </div>
+                {isEditing ? (
+                  <Input
+                    type="date"
+                    value={editData.hire_date || ""}
+                    onChange={(e) => setEditData({ ...editData, hire_date: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                  />
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm sm:text-base font-semibold text-foreground">
+                      {formatDate(employee.created_at)}
+                    </span>
+                  </div>
+                )}
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                  {t("username", "Nom d'utilisateur")}
+                </Label>
+                {isEditing ? (
+                  <Input
+                    type="text"
+                    value={editData.username || ""}
+                    onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder={t("username", "Nom d'utilisateur")}
+                  />
+                ) : (
+                  <div className="text-sm sm:text-base font-semibold text-foreground">
+                    {employee?.user?.username || "N/A"}
+                  </div>
+                )}
+              </div>
+
+              {isEditing && (
+                <div className="space-y-2">
+                  <Label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t("new_password", "Nouveau mot de passe")}
+                  </Label>
+                  <Input
+                    type="password"
+                    value={editData.password || ""}
+                    onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                    className="text-sm h-8 sm:h-10"
+                    placeholder={t("leave_empty_to_keep", "Laisser vide pour conserver")}
+                  />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

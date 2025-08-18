@@ -615,24 +615,38 @@ export default function AdminEmployeesPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
-            <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
-              <UserCheck className="w-6 h-6 sm:w-8 sm:h-8 text-green-400 mb-2" />
-              <div className="text-xl sm:text-2xl font-bold text-white">{fmt(activeEmployees)}</div>
-              <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
-                {t.statsActive}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
-            <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
-              <UserX className="w-6 h-6 sm:w-8 sm:h-8 text-red-400 mb-2" />
-              <div className="text-xl sm:text-2xl font-bold text-white">{fmt(inactiveEmployees)}</div>
-              <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
-                {t.statsInactive}
-              </div>
-            </CardContent>
-          </Card>
+          <button
+            type="button"
+            className="focus:outline-none group"
+            onClick={() => setStatusFilter('active')}
+            aria-label={t.statsActive}
+          >
+            <Card className={`glass-card backdrop-blur-futuristic border-0 shadow-2xl transition-all duration-200 group-focus:ring-2 group-focus:ring-green-400 group-hover:scale-[1.03] ${statusFilter === 'active' ? 'ring-2 ring-green-400 scale-[1.03]' : ''}`}>
+              <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
+                <UserCheck className="w-6 h-6 sm:w-8 sm:h-8 text-green-400 mb-2" />
+                <div className="text-xl sm:text-2xl font-bold text-white">{fmt(activeEmployees)}</div>
+                <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
+                  {t.statsActive}
+                </div>
+              </CardContent>
+            </Card>
+          </button>
+          <button
+            type="button"
+            className="focus:outline-none group"
+            onClick={() => setStatusFilter('inactive')}
+            aria-label={t.statsInactive}
+          >
+            <Card className={`glass-card backdrop-blur-futuristic border-0 shadow-2xl transition-all duration-200 group-focus:ring-2 group-focus:ring-red-400 group-hover:scale-[1.03] ${statusFilter === 'inactive' ? 'ring-2 ring-red-400 scale-[1.03]' : ''}`}>
+              <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
+                <UserX className="w-6 h-6 sm:w-8 sm:h-8 text-red-400 mb-2" />
+                <div className="text-xl sm:text-2xl font-bold text-white">{fmt(inactiveEmployees)}</div>
+                <div className="text-xs sm:text-sm text-slate-200 text-center" dir="auto">
+                  {t.statsInactive}
+                </div>
+              </CardContent>
+            </Card>
+          </button>
           <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl">
             <CardContent className="p-4 sm:p-5 lg:p-6 relative z-10 flex flex-col items-center">
               <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400 mb-2" />
@@ -668,27 +682,7 @@ export default function AdminEmployeesPage() {
 
               {/* Selects */}
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <div className="flex-1">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full glass-card backdrop-blur-futuristic bg-slate-800/50 border-slate-600 text-white">
-                      <SelectValue placeholder={t.status} />
-                    </SelectTrigger>
-                    <SelectContent className="glass-card backdrop-blur-futuristic bg-slate-900/95 border-slate-700 shadow-xl">
-                      <SelectItem value="all" className="text-white hover:bg-slate-800/80 focus:bg-slate-800/80">
-                        <span dir="auto">{t.allStatuses}</span>
-                      </SelectItem>
-                      <SelectItem value="active" className="text-white hover:bg-slate-800/80 focus:bg-slate-800/80">
-                        <span dir="auto">{t.statusActive}</span>
-                      </SelectItem>
-                      <SelectItem value="inactive" className="text-white hover:bg-slate-800/80 focus:bg-slate-800/80">
-                        <span dir="auto">{t.statusInactive}</span>
-                      </SelectItem>
-                      <SelectItem value="suspended" className="text-white hover:bg-slate-800/80 focus:bg-slate-800/80">
-                        <span dir="auto">{t.statusSuspended}</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              
 
                 <div className="flex-1">
                   <Select value={locationFilter} onValueChange={setLocationFilter}>

@@ -434,6 +434,11 @@ type Mutation {
     currentPassword: String!
     newPassword: String!
   ): User
+  updateUserInfo(
+    employee_id: ID!
+    username: String
+    hire_date: String
+  ): User
 }
 
 input WorkScheduleInput {
@@ -1734,6 +1739,52 @@ const resolvers = {
       } catch (error) {
         console.error("Error updating user password:", error)
         throw new Error("Failed to update password")
+      }
+    },
+    updateUserInfo: async (_: any, { employee_id, username, hire_date }: any) => {
+      try {
+        const updates = []
+        const values = []
+        const paramIndex = 2
+
+        // Update username in users table
+        if (username !== undefined) {
+          const userResult = await pool.query(
+            "UPDATE users SET username = $1 WHERE employee_id = $2 RETURNING id, username",
+            [username, employee_id],
+          )
+          if (userResult.rows.length === 0) throw new Error("User not found")
+        }
+
+        // Update hire date (created_at) in employees table
+        if (hire_date !== undefined) {
+          await pool.query("UPDATE employees SET created_at = $1 WHERE id = $2", [hire_date, employee_id])
+        }
+
+        // Get updated user and employee data
+        const userRes = await pool.query("SELECT * FROM users WHERE employee_id = $1", [employee_id])
+        const employeeRes = await pool.query("SELECT * FROM employees WHERE id = $1", [employee_id])
+
+        if (userRes.rows.length === 0) throw new Error("User not found")
+
+        const user = userRes.rows[0]
+        const employee = employeeRes.rows[0]
+
+        await logRecentActivity({
+          title: "Informations utilisateur mises à jour",
+          description: `${employee?.prenom} ${employee?.nom} - informations utilisateur modifiées`,
+          type: "employee",
+          urgent: false,
+        })
+
+        return {
+          id: user.id,
+          username: user.username,
+          employee: employee,
+        }
+      } catch (error) {
+        console.error("Error updating user info:", error)
+        throw new Error("Failed to update user info")
       }
     },
   },
