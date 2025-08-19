@@ -1068,6 +1068,8 @@ export const UPDATE_EMPLOYEE_PROFILE = gql`
     $prenom: String
     $email: String
     $telephone: String
+    $job_title: String
+    $location_id: Int
   ) {
     updateEmployeeProfile(
       id: $id
@@ -1075,12 +1077,16 @@ export const UPDATE_EMPLOYEE_PROFILE = gql`
       prenom: $prenom
       email: $email
       telephone: $telephone
+      job_title: $job_title
+      location_id: $location_id
     ) {
       id
       nom
       prenom
       email
       telephone
+      job_title
+      location_id
     }
   }
 `
@@ -1118,6 +1124,128 @@ export const UPDATE_USER_INFO = gql`
       id
       username
       employee_id
+    }
+  }
+`
+
+// New: Disciplinary System Queries and Mutations
+export const GET_EMPLOYEE_DISCIPLINARY_DATA = gql`
+  query GetEmployeeDisciplinaryData($employee_id: ID!) {
+    infractions(employee_id: $employee_id) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+    absences(employee_id: $employee_id) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+    retards(employee_id: $employee_id) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+    tenuesTravail(employee_id: $employee_id) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+  }
+`
+
+export const CREATE_INFRACTION = gql`
+  mutation CreateInfraction(
+    $employee_id: ID!
+    $name: String!
+    $description: String
+    $price: Float!
+  ) {
+    createInfraction(
+      employee_id: $employee_id
+      name: $name
+      description: $description
+      price: $price
+    ) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+  }
+`
+
+export const CREATE_ABSENCE = gql`
+  mutation CreateAbsence(
+    $employee_id: ID!
+    $name: String!
+    $description: String
+    $price: Float!
+  ) {
+    createAbsence(
+      employee_id: $employee_id
+      name: $name
+      description: $description
+      price: $price
+    ) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+  }
+`
+
+export const CREATE_RETARD = gql`
+  mutation CreateRetard(
+    $employee_id: ID!
+    $name: String!
+    $description: String
+    $price: Float!
+  ) {
+    createRetard(
+      employee_id: $employee_id
+      name: $name
+      description: $description
+      price: $price
+    ) {
+      id
+      name
+      description
+      price
+      created_date
+    }
+  }
+`
+
+export const CREATE_TENUE_TRAVAIL = gql`
+  mutation CreateTenueTravail(
+    $employee_id: ID!
+    $name: String!
+    $description: String
+    $price: Float!
+  ) {
+    createTenueTravail(
+      employee_id: $employee_id
+      name: $name
+      description: $description
+      price: $price
+    ) {
+      id
+      name
+      description
+      price
+      created_date
     }
   }
 `

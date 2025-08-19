@@ -23,14 +23,20 @@ import {
   Clock,
   FileText,
   Award,
+  Plus,
 } from "lucide-react"
 import { useQuery, useMutation } from "@apollo/client"
 import {
   GET_EMPLOYEE_DETAILS,
+  GET_EMPLOYEE_DISCIPLINARY_DATA,
   UPDATE_EMPLOYEE,
   UPDATE_EMPLOYEE_PROFILE,
   UPDATE_USER_PASSWORD,
   UPDATE_USER_INFO,
+  CREATE_INFRACTION,
+  CREATE_ABSENCE,
+  CREATE_RETARD,
+  CREATE_TENUE_TRAVAIL,
 } from "@/lib/graphql-queries"
 import { toast } from "sonner"
 import { useLang } from "@/lib/i18n"
@@ -48,6 +54,14 @@ export default function EmployeeDetailsPage() {
   // Local edit state hooks
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState<any>({})
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false)
+
+  const [disciplinaryForms, setDisciplinaryForms] = useState({
+    infraction: { name: "", price: "", description: "" },
+    absence: { name: "", price: "", description: "" },
+    retard: { name: "", price: "", description: "" },
+    tenue: { name: "", price: "", description: "" },
+  })
 
   // Single GraphQL query to get all employee data
   const { data, loading, refetch } = useQuery(GET_EMPLOYEE_DETAILS, {
@@ -55,6 +69,16 @@ export default function EmployeeDetailsPage() {
     fetchPolicy: "cache-first",
     nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: false,
+    errorPolicy: "all",
+  })
+
+  const {
+    data: disciplinaryData,
+    loading: disciplinaryLoading,
+    refetch: refetchDisciplinary,
+  } = useQuery(GET_EMPLOYEE_DISCIPLINARY_DATA, {
+    variables: { employee_id: employeeId },
+    fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   })
 
@@ -74,6 +98,7 @@ export default function EmployeeDetailsPage() {
             tenu_de_travail: () => mutationData.updateEmployee.tenu_de_travail,
             status: () => mutationData.updateEmployee.status,
             price_h: () => mutationData.updateEmployee.price_h,
+            location_id: () => mutationData.updateEmployee.location_id,
           },
         })
       }
@@ -90,6 +115,8 @@ export default function EmployeeDetailsPage() {
             prenom: () => mutationData.updateEmployeeProfile.prenom,
             email: () => mutationData.updateEmployeeProfile.email,
             telephone: () => mutationData.updateEmployeeProfile.telephone,
+            location_id: () => mutationData.updateEmployeeProfile.location_id,
+            job_title: () => mutationData.updateEmployeeProfile.job_title,
           },
         })
       }
@@ -113,21 +140,159 @@ export default function EmployeeDetailsPage() {
 
   const [updateUserPassword] = useMutation(UPDATE_USER_PASSWORD)
 
+  const [createInfraction] = useMutation(CREATE_INFRACTION, {
+    onCompleted: () => {
+      refetchDisciplinary()
+      setDisciplinaryForms((prev) => ({ ...prev, infraction: { name: "", price: "", description: "" } }))
+      toast.success("Infraction ajoutée avec succès")
+    },
+    onError: (error) => {
+      toast.error("Erreur lors de l'ajout de l'infraction")
+      console.error("Error creating infraction:", error)
+    },
+  })
+
+  const [createAbsence] = useMutation(CREATE_ABSENCE, {
+    onCompleted: () => {
+      refetchDisciplinary()
+      setDisciplinaryForms((prev) => ({ ...prev, absence: { name: "", price: "", description: "" } }))
+      toast.success("Absence ajoutée avec succès")
+    },
+    onError: (error) => {
+      toast.error("Erreur lors de l'ajout de l'absence")
+      console.error("Error creating absence:", error)
+    },
+  })
+
+  const [createRetard] = useMutation(CREATE_RETARD, {
+    onCompleted: () => {
+      refetchDisciplinary()
+      setDisciplinaryForms((prev) => ({ ...prev, retard: { name: "", price: "", description: "" } }))
+      toast.success("Retard ajouté avec succès")
+    },
+    onError: (error) => {
+      toast.error("Erreur lors de l'ajout du retard")
+      console.error("Error creating retard:", error)
+    },
+  })
+
+  const [createTenueTravail] = useMutation(CREATE_TENUE_TRAVAIL, {
+    onCompleted: () => {
+      refetchDisciplinary()
+      setDisciplinaryForms((prev) => ({ ...prev, tenue: { name: "", price: "", description: "" } }))
+      toast.success("Tenue de travail ajoutée avec succès")
+    },
+    onError: (error) => {
+      toast.error("Erreur lors de l'ajout de la tenue de travail")
+      console.error("Error creating tenue travail:", error)
+    },
+  })
+
   const employee = data?.employee
   const schedules = data?.workSchedules || []
   const contracts = data?.contracts || []
 
+  const infractions = disciplinaryData?.infractions || []
+  const absences = disciplinaryData?.absences || []
+  const retards = disciplinaryData?.retards || []
+  const tenuesTravail = disciplinaryData?.tenuesTravail || []
+
+  const locationOptions = [
+    { id: "1", name: "Red Castle lauina" },
+    { id: "2", name: "Red Castle Manzah" },
+    { id: "3", name: "Red Castle Cuisine Centrale" },
+  ]
+
+  const handleDisciplinaryFormChange = (type: string, field: string, value: string) => {
+    setDisciplinaryForms((prev) => ({
+      ...prev,
+      [type]: { ...prev[type], [field]: value },
+    }))
+  }
+
+  const handleAddDisciplinaryItem = async (type: string) => {
+    const form = disciplinaryForms[type]
+
+    if (!form.name.trim() || !form.price) {
+      toast.error("Veuillez remplir le nom et le prix")
+      return
+    }
+
+    const variables = {
+      employee_id: employeeId,
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      price: Number.parseFloat(form.price) || 0,
+    }
+
+    try {
+      switch (type) {
+        case "infraction":
+          await createInfraction({ variables })
+          break
+        case "absence":
+          await createAbsence({ variables })
+          break
+        case "retard":
+          await createRetard({ variables })
+          break
+        case "tenue":
+          await createTenueTravail({ variables })
+          break
+      }
+    } catch (error) {
+      console.error(`Error adding ${type}:`, error)
+    }
+  }
+
+  const formatDisciplinaryDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return format(date, "dd/MM/yyyy", { locale: fr })
+    } catch (error) {
+      return dateString
+    }
+  }
+
   const handleEdit = () => {
+    const formatHireDate = (dateValue: string | number) => {
+      if (!dateValue) return ""
+
+      // If it's a timestamp (number as string), convert to date
+      if (/^\d+$/.test(String(dateValue))) {
+        const date = new Date(Number(dateValue))
+        return date.toISOString().split("T")[0]
+      }
+
+      // If it's already an ISO string, extract date part
+      if (typeof dateValue === "string" && dateValue.includes("T")) {
+        return dateValue.split("T")[0]
+      }
+
+      // Try to parse as date and format
+      try {
+        const date = new Date(dateValue)
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().split("T")[0]
+        }
+      } catch (error) {
+        console.error("Error parsing date:", error)
+      }
+
+      return ""
+    }
+
     setEditData({
       prenom: employee?.prenom || "",
       nom: employee?.nom || "",
       email: employee?.email || "",
       telephone: employee?.telephone || "",
       job_title: employee?.job_title || "",
+      location_id: employee?.location?.id || "",
       status: employee?.status || "active",
       username: employee?.user?.username || "",
       password: "",
-      hire_date: employee?.created_at ? employee.created_at.split("T")[0] : "",
+      hire_date: formatHireDate(employee?.created_at),
       salaire: employee?.salaire || 0,
       prime: employee?.prime || 0,
       infractions: employee?.infractions || 0,
@@ -146,6 +311,8 @@ export default function EmployeeDetailsPage() {
         nom: editData.nom?.trim() || "",
         email: editData.email?.trim() || "",
         telephone: editData.telephone?.trim() || "",
+        location_id: editData.location_id ? Number.parseInt(editData.location_id, 10) : null,
+        job_title: editData.job_title?.trim() || "",
       }
 
       const financialData = Object.fromEntries(
@@ -210,10 +377,24 @@ export default function EmployeeDetailsPage() {
 
   const formatDate = (dateString: string) => {
     try {
-      const d = new Date(dateString)
-      if (isNaN(d.getTime())) return t("invalid_date")
-      return format(d, "PPPP", { locale: lang === "ar" ? arLocale : fr })
-    } catch {
+      let date: Date
+
+      // If it's a timestamp (number as string), convert to date
+      if (/^\d+$/.test(String(dateString))) {
+        date = new Date(Number(dateString))
+      } else {
+        date = new Date(dateString)
+      }
+
+      if (isNaN(date.getTime())) {
+        console.log("[v0] Invalid date value:", dateString)
+        return t("invalid_date")
+      }
+
+      console.log("[v0] Formatting date:", dateString, "->", date)
+      return format(date, "PPPP", { locale: lang === "ar" ? arLocale : fr })
+    } catch (error) {
+      console.log("[v0] Date formatting error:", error, "for value:", dateString)
       return t("invalid_date")
     }
   }
@@ -236,6 +417,20 @@ export default function EmployeeDetailsPage() {
       return sum
     }, 0)
   }, [schedules])
+
+  const getLocationName = (locationId: string | number) => {
+    console.log("[v0] Location ID received:", locationId, "Type:", typeof locationId)
+
+    if (!locationId) {
+      console.log("[v0] Location ID is null/undefined")
+      return "Non assigné"
+    }
+
+    const location = locationOptions.find((loc) => loc.id === String(locationId))
+    console.log("[v0] Found location:", location)
+
+    return location ? location.name : "Non assigné"
+  }
 
   // Show loading state
   if (loading) {
@@ -395,7 +590,7 @@ export default function EmployeeDetailsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm font-medium text-muted-foreground">Email</Label>
+                <Label className="text-xs sm:text-sm font-medium">Email</Label>
                 {isEditing ? (
                   <Input
                     type="email"
@@ -492,14 +687,17 @@ export default function EmployeeDetailsPage() {
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-sm sm:text-base font-semibold text-foreground">
-                      {formatDate(employee.created_at)}
+                      {(() => {
+                        console.log("[v0] Employee created_at value:", employee.created_at)
+                        return formatDate(employee.created_at)
+                      })()}
                     </span>
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
                   {t("username", "Nom d'utilisateur")}
                 </Label>
                 {isEditing ? (
@@ -531,6 +729,48 @@ export default function EmployeeDetailsPage() {
                   />
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-muted-foreground" dir="auto">
+                  Location
+                </Label>
+                {isEditing ? (
+                  <div className="relative">
+                    <select
+                      value={editData.location_id || ""}
+                      onChange={(e) => setEditData({ ...editData, location_id: e.target.value })}
+                      className="w-full text-sm h-8 sm:h-10 px-3 py-1 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent appearance-none cursor-pointer hover:border-ring/50 transition-colors"
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' strokeLinecap='round' strokeLinejoin='round' strokeWidth='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                        backgroundPosition: "right 0.5rem center",
+                        backgroundRepeat: "no-repeat",
+                        backgroundSize: "1.5em 1.5em",
+                        paddingRight: "2.5rem",
+                      }}
+                    >
+                      <option value="" disabled className="text-muted-foreground">
+                        Sélectionner une location
+                      </option>
+                      {locationOptions.map((location) => (
+                        <option key={location.id} value={location.id} className="text-foreground">
+                          {location.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                    <span className="text-sm sm:text-base font-semibold text-foreground" dir="auto">
+                      {(() => {
+                        console.log("[v0] Employee location object:", employee.location)
+                        console.log("[v0] Employee location ID:", employee.location?.id)
+                        return employee.location?.name || getLocationName(employee.location?.id) || "Non assigné"
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -643,67 +883,308 @@ export default function EmployeeDetailsPage() {
                 <span dir="auto">{t("disciplinary_data")}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-3 sm:space-y-4">
-              {[
-                { key: "infractions", label: t("infractions"), max: 10, color: "text-red-500" },
-                { key: "absence", label: t("absences"), max: 15, color: "text-orange-500" },
-                { key: "retard", label: t("delays"), max: 20, color: "text-yellow-500" },
-              ].map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm font-medium" dir="auto">
-                      {item.label}
-                    </span>
-                    <div className="text-right">
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={editData[item.key] ?? 0}
-                          onChange={(e) =>
-                            setEditData({ ...editData, [item.key]: Number.parseInt(e.target.value) || 0 })
-                          }
-                          className="w-16 sm:w-20 h-6 sm:h-8 text-xs sm:text-sm"
-                        />
-                      ) : (
-                        <>
-                          <span className="text-sm sm:text-lg font-bold text-foreground">
-                            {formatNumber(employee[item.key] || 0)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">/{item.max}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {!isEditing && <Progress value={((employee[item.key] || 0) / item.max) * 100} className="h-2" />}
-                </div>
-              ))}
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm font-medium" dir="auto">
-                    {t("uniforms")}
-                  </span>
-                  <div className="text-right">
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        value={editData.tenu_de_travail ?? 0}
-                        onChange={(e) =>
-                          setEditData({ ...editData, tenu_de_travail: Number.parseInt(e.target.value) || 0 })
-                        }
-                        className="w-16 sm:w-20 h-6 sm:h-8 text-xs sm:text-sm"
-                      />
-                    ) : (
-                      <span className="text-sm sm:text-lg font-bold text-foreground">
-                        {formatNumber(employee.tenu_de_travail || 0)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">Système disciplinaire détaillé disponible ci-dessous</p>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Comprehensive Disciplinary Management System */}
+        <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl bg-gradient-to-br from-card to-card/80">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center text-base sm:text-lg">
+              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              <span dir="auto">Données Disciplinaires</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Infractions Box */}
+              <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-red-400 flex items-center">
+                    <AlertTriangle className="w-5 h-5 mr-2" />
+                    Infractions
+                  </h3>
+                  <Button
+                    size="sm"
+                    className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/30"
+                    onClick={() => handleAddDisciplinaryItem("infraction")}
+                    disabled={!disciplinaryForms.infraction.name.trim() || !disciplinaryForms.infraction.price}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Add Infraction Form */}
+                  <div className="bg-background/50 rounded-md p-3 space-y-2">
+                    <Input
+                      placeholder="Nom de l'infraction"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.infraction.name}
+                      onChange={(e) => handleDisciplinaryFormChange("infraction", "name", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Prix (DT)"
+                      type="number"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.infraction.price}
+                      onChange={(e) => handleDisciplinaryFormChange("infraction", "price", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Description"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.infraction.description}
+                      onChange={(e) => handleDisciplinaryFormChange("infraction", "description", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Existing Infractions List */}
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {infractions.length > 0 ? (
+                      infractions.map((item: any) => (
+                        <div key={item.id} className="bg-background/30 rounded-md p-2 text-sm">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-red-400">{item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                              )}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {formatDisciplinaryDate(item.created_date)}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-red-400">{formatCurrency(item.price)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-muted-foreground text-center py-2">
+                        Aucune infraction enregistrée
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Absences Box */}
+              <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-orange-400 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Absences
+                  </h3>
+                  <Button
+                    size="sm"
+                    className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border-orange-500/30"
+                    onClick={() => handleAddDisciplinaryItem("absence")}
+                    disabled={!disciplinaryForms.absence.name.trim() || !disciplinaryForms.absence.price}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Add Absence Form */}
+                  <div className="bg-background/50 rounded-md p-3 space-y-2">
+                    <Input
+                      placeholder="Nom de l'absence"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.absence.name}
+                      onChange={(e) => handleDisciplinaryFormChange("absence", "name", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Prix (DT)"
+                      type="number"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.absence.price}
+                      onChange={(e) => handleDisciplinaryFormChange("absence", "price", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Description"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.absence.description}
+                      onChange={(e) => handleDisciplinaryFormChange("absence", "description", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Existing Absences List */}
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {absences.length > 0 ? (
+                      absences.map((item: any) => (
+                        <div key={item.id} className="bg-background/30 rounded-md p-2 text-sm">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-orange-400">{item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                              )}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {formatDisciplinaryDate(item.created_date)}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-orange-400">{formatCurrency(item.price)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-muted-foreground text-center py-2">Aucune absence enregistrée</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Retards Box */}
+              <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/20 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-yellow-400 flex items-center">
+                    <Clock className="w-5 h-5 mr-2" />
+                    Retards
+                  </h3>
+                  <Button
+                    size="sm"
+                    className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border-yellow-500/30"
+                    onClick={() => handleAddDisciplinaryItem("retard")}
+                    disabled={!disciplinaryForms.retard.name.trim() || !disciplinaryForms.retard.price}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Add Retard Form */}
+                  <div className="bg-background/50 rounded-md p-3 space-y-2">
+                    <Input
+                      placeholder="Nom du retard"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.retard.name}
+                      onChange={(e) => handleDisciplinaryFormChange("retard", "name", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Prix (DT)"
+                      type="number"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.retard.price}
+                      onChange={(e) => handleDisciplinaryFormChange("retard", "price", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Description"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.retard.description}
+                      onChange={(e) => handleDisciplinaryFormChange("retard", "description", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Existing Retards List */}
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {retards.length > 0 ? (
+                      retards.map((item: any) => (
+                        <div key={item.id} className="bg-background/30 rounded-md p-2 text-sm">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-yellow-400">{item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                              )}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {formatDisciplinaryDate(item.created_date)}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-yellow-400">{formatCurrency(item.price)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-muted-foreground text-center py-2">Aucun retard enregistré</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tenues de Travail Box */}
+              <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-blue-400 flex items-center">
+                    <User className="w-5 h-5 mr-2" />
+                    Tenues de Travail
+                  </h3>
+                  <Button
+                    size="sm"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border-blue-500/30"
+                    onClick={() => handleAddDisciplinaryItem("tenue")}
+                    disabled={!disciplinaryForms.tenue.name.trim() || !disciplinaryForms.tenue.price}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Add Tenue Form */}
+                  <div className="bg-background/50 rounded-md p-3 space-y-2">
+                    <Input
+                      placeholder="Nom de la tenue"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.tenue.name}
+                      onChange={(e) => handleDisciplinaryFormChange("tenue", "name", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Prix (DT)"
+                      type="number"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.tenue.price}
+                      onChange={(e) => handleDisciplinaryFormChange("tenue", "price", e.target.value)}
+                    />
+                    <Input
+                      placeholder="Description"
+                      className="h-8 text-sm bg-background/80"
+                      value={disciplinaryForms.tenue.description}
+                      onChange={(e) => handleDisciplinaryFormChange("tenue", "description", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Existing Tenues List */}
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {tenuesTravail.length > 0 ? (
+                      tenuesTravail.map((item: any) => (
+                        <div key={item.id} className="bg-background/30 rounded-md p-2 text-sm">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-blue-400">{item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                              )}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {formatDisciplinaryDate(item.created_date)}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-blue-400">{formatCurrency(item.price)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-muted-foreground text-center py-2">Aucune tenue enregistrée</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Activity (Schedules) */}
         <Card className="glass-card backdrop-blur-futuristic border-0 shadow-2xl bg-gradient-to-br from-card to-card/80">

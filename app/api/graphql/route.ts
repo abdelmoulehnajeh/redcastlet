@@ -5,7 +5,8 @@ import { Pool } from "pg"
 
 // Database connection
 const pool = new Pool({
-  connectionString: "postgresql://neondb_owner:npg_PkV0ch8aUzKy@ep-super-shadow-adz5agx9-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  connectionString:
+    "postgresql://neondb_owner:npg_PkV0ch8aUzKy@ep-super-shadow-adz5agx9-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
 })
 
 // Ensure payroll and notifications tables exist
@@ -201,6 +202,46 @@ type Location {
   employees: [Employee!]!
 }
 
+type Infraction {
+  id: ID!
+  name: String!
+  description: String
+  employee_id: ID!
+  price: Float!
+  created_date: String!
+  employee: Employee
+}
+
+type Absence {
+  id: ID!
+  name: String!
+  description: String
+  employee_id: ID!
+  price: Float!
+  created_date: String!
+  employee: Employee
+}
+
+type Retard {
+  id: ID!
+  name: String!
+  description: String
+  employee_id: ID!
+  price: Float!
+  created_date: String!
+  employee: Employee
+}
+
+type TenueTravail {
+  id: ID!
+  name: String!
+  description: String
+  employee_id: ID!
+  price: Float!
+  created_date: String!
+  employee: Employee
+}
+
 type WorkSchedule {
   id: ID!
   employee_id: String!
@@ -331,6 +372,10 @@ type Query {
   dashboardStats(userId: ID!, role: String!): DashboardStats
   adminApprovals(status: String): [AdminApproval!]!
   notifications(user_id: ID!, role: String, only_unseen: Boolean): [Notification!]!
+  infractions(employee_id: ID!): [Infraction!]!
+  absences(employee_id: ID!): [Absence!]!
+  retards(employee_id: ID!): [Retard!]!
+  tenuesTravail(employee_id: ID!): [TenueTravail!]!
 }
 
 type Mutation {
@@ -428,6 +473,8 @@ type Mutation {
     prenom: String
     email: String
     telephone: String
+    job_title: String
+    location_id: Int
   ): Employee
   updateUserPassword(
     employee_id: ID!
@@ -439,6 +486,30 @@ type Mutation {
     username: String
     hire_date: String
   ): User
+  createInfraction(
+    employee_id: ID!
+    name: String!
+    description: String
+    price: Float!
+  ): Infraction
+  createAbsence(
+    employee_id: ID!
+    name: String!
+    description: String
+    price: Float!
+  ): Absence
+  createRetard(
+    employee_id: ID!
+    name: String!
+    description: String
+    price: Float!
+  ): Retard
+  createTenueTravail(
+    employee_id: ID!
+    name: String!
+    description: String
+    price: Float!
+  ): TenueTravail
 }
 
 input WorkScheduleInput {
@@ -954,6 +1025,52 @@ const resolvers = {
         return res.rows
       } catch (e) {
         console.error("Error fetching notifications:", e)
+        return []
+      }
+    },
+
+    infractions: async (_: any, { employee_id }: { employee_id: string }) => {
+      try {
+        const result = await pool.query("SELECT * FROM infractions WHERE employee_id = $1 ORDER BY created_date DESC", [
+          employee_id,
+        ])
+        return result.rows
+      } catch (error) {
+        console.error("Error fetching infractions:", error)
+        return []
+      }
+    },
+    absences: async (_: any, { employee_id }: { employee_id: string }) => {
+      try {
+        const result = await pool.query("SELECT * FROM absences WHERE employee_id = $1 ORDER BY created_date DESC", [
+          employee_id,
+        ])
+        return result.rows
+      } catch (error) {
+        console.error("Error fetching absences:", error)
+        return []
+      }
+    },
+    retards: async (_: any, { employee_id }: { employee_id: string }) => {
+      try {
+        const result = await pool.query("SELECT * FROM retards WHERE employee_id = $1 ORDER BY created_date DESC", [
+          employee_id,
+        ])
+        return result.rows
+      } catch (error) {
+        console.error("Error fetching retards:", error)
+        return []
+      }
+    },
+    tenuesTravail: async (_: any, { employee_id }: { employee_id: string }) => {
+      try {
+        const result = await pool.query(
+          "SELECT * FROM tenues_de_travail WHERE employee_id = $1 ORDER BY created_date DESC",
+          [employee_id],
+        )
+        return result.rows
+      } catch (error) {
+        console.error("Error fetching tenues de travail:", error)
         return []
       }
     },
@@ -1655,7 +1772,7 @@ const resolvers = {
         return false
       }
     },
-    updateEmployeeProfile: async (_: any, { id, nom, prenom, email, telephone }: any) => {
+    updateEmployeeProfile: async (_: any, { id, nom, prenom, email, telephone, job_title, location_id }: any) => {
       try {
         const beforeRes = await pool.query("SELECT * FROM employees WHERE id = $1", [id])
         if (beforeRes.rows.length === 0) throw new Error("Employee not found")
@@ -1682,6 +1799,16 @@ const resolvers = {
         if (telephone !== undefined) {
           updateFields.push(`telephone = $${paramIndex}`)
           updateValues.push(telephone)
+          paramIndex++
+        }
+        if (job_title !== undefined) {
+          updateFields.push(`job_title = $${paramIndex}`)
+          updateValues.push(job_title)
+          paramIndex++
+        }
+        if (location_id !== undefined) {
+          updateFields.push(`location_id = $${paramIndex}`)
+          updateValues.push(location_id)
           paramIndex++
         }
 
@@ -1785,6 +1912,111 @@ const resolvers = {
       } catch (error) {
         console.error("Error updating user info:", error)
         throw new Error("Failed to update user info")
+      }
+    },
+
+    createInfraction: async (_: any, args: any) => {
+      try {
+        const { employee_id, name, description, price } = args
+        const result = await pool.query(
+          "INSERT INTO infractions (employee_id, name, description, price) VALUES ($1, $2, $3, $4) RETURNING *",
+          [employee_id, name, description, price],
+        )
+
+        const userResult = await pool.query("SELECT id FROM users WHERE employee_id = $1", [employee_id])
+        if (userResult.rows.length > 0) {
+          await createNotification({
+            user_id: userResult.rows[0].id,
+            role: "employee",
+            title: "Nouvelle infraction",
+            message: `Une infraction "${name}" a été ajoutée à votre dossier. Montant: ${price} DT`,
+            type: "infraction",
+            reference_id: result.rows[0].id,
+          })
+        }
+
+        return result.rows[0]
+      } catch (error) {
+        console.error("Error creating infraction:", error)
+        throw new Error("Failed to create infraction")
+      }
+    },
+    createAbsence: async (_: any, args: any) => {
+      try {
+        const { employee_id, name, description, price } = args
+        const result = await pool.query(
+          "INSERT INTO absences (employee_id, name, description, price) VALUES ($1, $2, $3, $4) RETURNING *",
+          [employee_id, name, description, price],
+        )
+
+        const userResult = await pool.query("SELECT id FROM users WHERE employee_id = $1", [employee_id])
+        if (userResult.rows.length > 0) {
+          await createNotification({
+            user_id: userResult.rows[0].id,
+            role: "employee",
+            title: "Nouvelle absence",
+            message: `Une absence "${name}" a été enregistrée. Montant: ${price} DT`,
+            type: "absence",
+            reference_id: result.rows[0].id,
+          })
+        }
+
+        return result.rows[0]
+      } catch (error) {
+        console.error("Error creating absence:", error)
+        throw new Error("Failed to create absence")
+      }
+    },
+    createRetard: async (_: any, args: any) => {
+      try {
+        const { employee_id, name, description, price } = args
+        const result = await pool.query(
+          "INSERT INTO retards (employee_id, name, description, price) VALUES ($1, $2, $3, $4) RETURNING *",
+          [employee_id, name, description, price],
+        )
+
+        const userResult = await pool.query("SELECT id FROM users WHERE employee_id = $1", [employee_id])
+        if (userResult.rows.length > 0) {
+          await createNotification({
+            user_id: userResult.rows[0].id,
+            role: "employee",
+            title: "Nouveau retard",
+            message: `Un retard "${name}" a été enregistré. Montant: ${price} DT`,
+            type: "retard",
+            reference_id: result.rows[0].id,
+          })
+        }
+
+        return result.rows[0]
+      } catch (error) {
+        console.error("Error creating retard:", error)
+        throw new Error("Failed to create retard")
+      }
+    },
+    createTenueTravail: async (_: any, args: any) => {
+      try {
+        const { employee_id, name, description, price } = args
+        const result = await pool.query(
+          "INSERT INTO tenues_de_travail (employee_id, name, description, price) VALUES ($1, $2, $3, $4) RETURNING *",
+          [employee_id, name, description, price],
+        )
+
+        const userResult = await pool.query("SELECT id FROM users WHERE employee_id = $1", [employee_id])
+        if (userResult.rows.length > 0) {
+          await createNotification({
+            user_id: userResult.rows[0].id,
+            role: "employee",
+            title: "Tenue de travail",
+            message: `Une note sur la tenue de travail "${name}" a été ajoutée. Montant: ${price} DT`,
+            type: "tenue_travail",
+            reference_id: result.rows[0].id,
+          })
+        }
+
+        return result.rows[0]
+      } catch (error) {
+        console.error("Error creating tenue de travail:", error)
+        throw new Error("Failed to create tenue de travail")
       }
     },
   },
